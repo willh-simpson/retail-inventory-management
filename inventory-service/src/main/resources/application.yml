@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/inventorydb
+    username: postgres
+    password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: update # suggested to replace this with 'validate' or do migrations later
+    show-sql: true
+    # database-platform: org.hibernate.dialect.PostgreSQLDialect
+server:
+  port: 8080
