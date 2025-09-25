@@ -19,6 +19,18 @@ public class ProductController {
     }
 
     /**
+     * return a specific product via SKU in "products" table
+     *
+     * @param sku product SKU number
+     * @return matching product or throw error if not found
+     */
+    public Product getProduct(String sku) {
+        return repo
+                .findBySku(sku)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+    }
+
+    /**
      * return all products in "products" table
      *
      * @return list of all mapped products

@@ -20,6 +20,16 @@ public class Inventory {
     private int quantityOnHand;
     private int quantityReserved;
 
+    public Inventory() {
+
+    }
+
+    public Inventory(Product product, int quantityOnHand, int quantityReserved) {
+        this.product = product;
+        this.quantityOnHand = quantityOnHand;
+        this.quantityReserved = quantityReserved;
+    }
+
     public Long getId() {
         return id;
     }
