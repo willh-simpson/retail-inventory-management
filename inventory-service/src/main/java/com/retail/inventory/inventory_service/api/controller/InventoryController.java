@@ -1,8 +1,12 @@
 package com.retail.inventory.inventory_service.api.controller;
 
-import com.retail.inventory.inventory_service.domain.model.Inventory;
-import com.retail.inventory.inventory_service.domain.model.Product;
-import com.retail.inventory.inventory_service.domain.repository.InventoryRepository;
+import com.retail.inventory.inventory_service.api.dto.InventoryItemDto;
+import com.retail.inventory.inventory_service.api.dto.InventoryRequestDto;
+import com.retail.inventory.inventory_service.api.dto.StockRequest;
+import com.retail.inventory.inventory_service.application.service.InventoryService;
+import com.retail.inventory.inventory_service.domain.model.InventoryItem;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -13,42 +17,41 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/inventory")
 public class InventoryController {
-    private final InventoryRepository repo;
+    private final InventoryService service;
 
-    public InventoryController(InventoryRepository repo) {
-        this.repo = repo;
+    public InventoryController(InventoryService service) {
+        this.service = service;
     }
 
-    /**
-     * return inventory information for a specific product
-     *
-     * @param product product to request inventory information
-     * @return matching inventory or throw error if not found
-     */
-    public Inventory getInventory(Product product) {
-        return repo
-                .findByProduct(product)
-                .orElseThrow(() -> new RuntimeException("Inventory item not found"));
-    }
-
-    /**
-     * return all inventory information for each product
-     *
-     * @return list of all inventory for all mapped products
-     */
-    @GetMapping
-    public List<Inventory> getAllInventory() {
-        return repo.findAll();
-    }
-
-    /**
-     * add inventory information for a product
-     *
-     * @param inv inventory information to add
-     * @return inventory upon success
-     */
     @PostMapping
-    public Inventory addInventory(@RequestBody Inventory inv) {
-        return repo.save(inv);
+    public ResponseEntity<InventoryItemDto> addInventoryItem(@RequestBody InventoryRequestDto req) {
+        InventoryItem item = service.addInventoryItem(req);
+
+        // POST request needs to return HTTP status 201
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(InventoryItemDto.fromEntity(item));
+    }
+
+    @GetMapping("/{product_id}")
+    public ResponseEntity<InventoryItemDto> getInventoryItem(@PathVariable("product_id") Long productId) {
+        InventoryItem item = service.getInventoryItem(productId);
+
+        // ok() returns HTTP status 200
+        return ResponseEntity.ok(InventoryItemDto.fromEntity(item));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<InventoryItemDto>> getAllInventory() {
+        List<InventoryItem> items = service.getAllInventory();
+
+        return ResponseEntity.ok(InventoryItemDto.fromEntityList(items));
+    }
+
+    @PutMapping("/{product_id}/stock")
+    public ResponseEntity<InventoryItemDto> addStock(@PathVariable("product_id") Long productId, @RequestBody StockRequest req) {
+        InventoryItem item = service.addStock(productId, req.quantity());
+
+        return ResponseEntity.ok(InventoryItemDto.fromEntity(item));
     }
 }

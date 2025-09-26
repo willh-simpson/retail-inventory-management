@@ -1,7 +1,12 @@
 package com.retail.inventory.inventory_service.api.controller;
 
+import com.retail.inventory.inventory_service.api.dto.ProductDto;
+import com.retail.inventory.inventory_service.api.dto.ProductPriceRequest;
+import com.retail.inventory.inventory_service.api.dto.ProductRequestDto;
+import com.retail.inventory.inventory_service.application.service.ProductService;
 import com.retail.inventory.inventory_service.domain.model.Product;
-import com.retail.inventory.inventory_service.domain.repository.ProductRepository;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -12,42 +17,41 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/products")
 public class ProductController {
-    private final ProductRepository repo;
+    private final ProductService service;
 
-    public ProductController(ProductRepository repo) {
-        this.repo = repo;
+    public ProductController(ProductService service) {
+        this.service = service;
     }
 
-    /**
-     * return a specific product via SKU in "products" table
-     *
-     * @param sku product SKU number
-     * @return matching product or throw error if not found
-     */
-    public Product getProduct(String sku) {
-        return repo
-                .findBySku(sku)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
-    }
-
-    /**
-     * return all products in "products" table
-     *
-     * @return list of all mapped products
-     */
-    @GetMapping
-    public List<Product> getAllProducts() {
-        return repo.findAll();
-    }
-
-    /**
-     * add individual product to "products" table
-     *
-     * @param product product with all relevant information to send to server
-     * @return product upon success
-     */
     @PostMapping
-    public Product addProduct(@RequestBody Product product) {
-        return repo.save(product);
+    public ResponseEntity<ProductDto> addProduct(@RequestBody ProductRequestDto req) {
+        Product product = service.addProduct(req);
+
+        // POST request needs to return HTTP 201 status if product was successfully created
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(ProductDto.fromEntity(product));
+    }
+
+    @GetMapping("/{sku}")
+    public ResponseEntity<ProductDto> getProduct(@PathVariable String sku) {
+        Product product = service.getProduct(sku);
+
+        // ok() returns HTTP status 200
+        return ResponseEntity.ok(ProductDto.fromEntity(product));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<ProductDto>> getAllProducts() {
+        List<Product> products = service.getAllProducts();
+
+        return ResponseEntity.ok(ProductDto.fromEntityList(products));
+    }
+
+    @PutMapping("/{id}/price")
+    public ResponseEntity<ProductDto> updatePrice(@PathVariable Long id, @RequestBody ProductPriceRequest req) {
+        Product product = service.updatePrice(id, req.price());
+
+        return ResponseEntity.ok(ProductDto.fromEntity(product));
     }
 }

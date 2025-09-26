@@ -1,112 +1,129 @@
 package com.retail.inventory.inventory_service.api;
 
 import com.retail.inventory.inventory_service.api.controller.InventoryController;
-import com.retail.inventory.inventory_service.domain.model.Inventory;
+import com.retail.inventory.inventory_service.api.dto.InventoryRequestDto;
+import com.retail.inventory.inventory_service.application.service.InventoryService;
+import com.retail.inventory.inventory_service.domain.model.Category;
+import com.retail.inventory.inventory_service.domain.model.InventoryItem;
 import com.retail.inventory.inventory_service.domain.model.Product;
-import com.retail.inventory.inventory_service.domain.repository.InventoryRepository;
-import org.assertj.core.api.ListAssert;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@ExtendWith(MockitoExtension.class)
-class InventoryControllerTest {
-    @Mock
-    private InventoryRepository repo;
+@WebMvcTest(InventoryController.class)
+@AutoConfigureMockMvc(addFilters = false)
+public class InventoryControllerTest {
+    @Autowired
+    private MockMvc mvc;
 
-    @InjectMocks
-    private InventoryController controller;
+    @MockitoBean
+    private InventoryService service;
 
     @Test
-    void testAddInventory() {
-        // create example inventory info and set each individual property
-        Product product = new Product("00589837", "example", 9.99);
-        Inventory inv = new Inventory();
-        inv.setId(1L);
-        inv.setProduct(product);
-        inv.setQuantityOnHand(5);
-        inv.setQuantityReserved(3);
+    void testAddInventoryItem() throws Exception {
+        LocalDateTime currentTime = LocalDateTime.of(2025, 9, 25, 10, 30, 0);
+        Category cat = new Category(1L, "example", "example desc");
+        Product product = new Product(1L, "00589837", "example", "example desc", 9.99, cat);
+        InventoryItem item = new InventoryItem(1L, product, 5, "aisle 1", currentTime);
 
-        // mock repo save()
-        when(repo.save(any(Inventory.class))).thenReturn(inv);
+        // mock service behavior
+        when(service.addInventoryItem(any(InventoryRequestDto.class))).thenReturn(item);
 
-        // verify correct inventory was added
-        Inventory savedInv = controller.addInventory(new Inventory(product, 5, 3));
-        assertThat(savedInv.getId()).isEqualTo(1L);
-        assertThat(savedInv.getProduct()).isEqualTo(product);
-        assertThat(savedInv.getQuantityOnHand()).isEqualTo(5);
-        assertThat(savedInv.getQuantityReserved()).isEqualTo(3);
+        String requestBody = """
+                {
+                    "id": 1,
+                    "product_id": 1,
+                    "quantity": 5,
+                    "location": "aisle 1",
+                    "last_updated": "2025-09-25T10:30:00"
+                }
+                """;
 
-        // verify repo was called only once
-        verify(repo, times(1)).save(any(Inventory.class));
+        mvc.perform(post("/api/inventory")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(1L))
+                .andExpect(jsonPath("$.product_id").value(1L))
+                .andExpect(jsonPath("$.quantity").value(5));
     }
 
     @Test
-    void testFindByProduct_Success() {
-        // create example inventory
-        Product product = new Product("00010001", "example 2", 19.99);
-        Inventory inv = new Inventory(product, 3, 2);
-        inv.setId(2L);
+    void testGetInventoryItem() throws Exception {
+        LocalDateTime currentTime = LocalDateTime.of(2025, 9, 25, 10, 30, 0);
+        Category cat = new Category(1L, "example", "example desc");
+        Product product = new Product(1L, "00589837", "example", "example desc", 9.99, cat);
+        InventoryItem item = new InventoryItem(1L, product, 5, "aisle 1", currentTime);
 
-        // mock repo find()
-        when(repo.findByProduct(product)).thenReturn(Optional.of(inv));
+        // mock service behavior
+        when(service.getInventoryItem(1L)).thenReturn(item);
 
-        // verify inventory was found
-        Inventory foundInv = controller.getInventory(product);
-        assertThat(foundInv.getProduct()).isEqualTo(product);
-
-        // verify repo was called only once
-        verify(repo, times(1)).findByProduct(product);
+        mvc.perform(get("/api/inventory/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1L))
+                .andExpect(jsonPath("$.product_id").value(1L))
+                .andExpect(jsonPath("$.quantity").value(5));
     }
 
     @Test
-    void testFindByProduct_Fail() {
-        // mock a failed get request
-        Product product = new Product("00020002", "example 3", .99);
-        when(repo.findByProduct(product)).thenReturn(Optional.empty());
+    void testGetAllInventory() throws Exception {
+        // mock list of 2 inventory items
+        LocalDateTime currentTime = LocalDateTime.of(2025, 9, 25, 10, 30, 0);
+        Category cat1 = new Category(1L, "example", "example desc");
+        Product product1 = new Product(1L, "00589837", "example", "example desc", 9.99, cat1);
+        InventoryItem inv1 = new InventoryItem(1L, product1, 5, "aisle 1", currentTime);
 
-        // verify exception was thrown when calling controller
-        assertThatThrownBy(() -> controller.getInventory(product))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("Inventory item not found");
+        Category cat2 = new Category(2L, "example 2", "example desc");
+        Product product2 = new Product(2L, "00010001", "example 2", "example desc", 19.99, cat2);
+        InventoryItem inv2 = new InventoryItem(2L, product2, 3, "aisle 2", currentTime);
+
+        List<InventoryItem> items = Arrays.asList(inv1, inv2);
+
+        // mock service behavior
+        when(service.getAllInventory()).thenReturn(items);
+
+        mvc.perform(get("/api/inventory"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("[0].id").value(1L))
+                .andExpect(jsonPath("$[1].id").value(2L))
+                .andExpect(jsonPath("$.length()").value(2));
     }
 
     @Test
-    void testGetAllInventory() {
-        // populate a list with mock inventory items
-        Product product1 = new Product("00589837", "example", 9.99);
-        product1.setId(1L);
-        Inventory inv1 = new Inventory(product1, 5, 3);
-        inv1.setId(1L);
+    void testAddStock() throws Exception {
+        LocalDateTime currentTime = LocalDateTime.of(2025, 9, 25, 10, 30, 0);
+        Category cat = new Category(1L, "example", "example desc");
+        Product product = new Product(1L, "00589837", "example", "example desc", 9.99, cat);
+        InventoryItem item = new InventoryItem(1L, product, 5, "aisle 1", currentTime);
 
-        Product product2 = new Product("00010001", "example 2", 19.99);
-        product2.setId(2L);
-        Inventory inv2 = new Inventory(product2, 3, 2);
-        inv2.setId(2L);
+        // mock service behavior
+        when(service.addStock(item.getProduct().getId(), 5)).thenReturn(new InventoryItem(1L, product, 10, "aisle 1", currentTime));
 
-        List<Inventory> invItems = Arrays.asList(inv1, inv2);
+        String requestBody = """
+                {
+                    "quantity": 5
+                }
+                """;
 
-        // mock repo findAll()
-        when(repo.findAll()).thenReturn(invItems);
-
-        // verify controller is getting all inventory items
-        List<Inventory> foundInv = controller.getAllInventory();
-        ListAssert<Inventory> listAssert = org.assertj.core.api.Assertions.assertThat(foundInv);
-        listAssert.hasSize(2);
-        listAssert.extracting(Inventory::getProduct).containsExactly(product1, product2);
-
-        // verify repo was called only once
-        verify(repo, times(1)).findAll();
+        mvc.perform(put("/api/inventory/1/stock")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1L))
+                .andExpect(jsonPath("$.quantity").value(10));
     }
 }

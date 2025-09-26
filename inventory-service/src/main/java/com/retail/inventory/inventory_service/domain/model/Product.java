@@ -15,16 +15,23 @@ public class Product {
     // product information
     private String sku;
     private String name;
+    private String description;
     private double price;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id", nullable = false)
+    private Category category;
 
     public Product() {
 
     }
 
-    public Product(String sku, String name, double price) {
+    public Product(Long id, String sku, String name, String description, double price, Category category) {
+        this.id = id;
         this.sku = sku;
         this.name = name;
         this.price = price;
+        this.category = category;
     }
 
     public Long getId() {
@@ -51,11 +58,27 @@ public class Product {
         this.name = name;
     }
 
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
     public double getPrice() {
         return price;
     }
 
     public void setPrice(double price) {
         this.price = price;
+    }
+
+    public Category getCategory() {
+        return category;
+    }
+
+    public void setCategory(Category category) {
+        this.category = category;
     }
 }
