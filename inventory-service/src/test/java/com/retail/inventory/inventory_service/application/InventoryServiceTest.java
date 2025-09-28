@@ -52,7 +52,7 @@ class InventoryServiceTest {
         when(invRepo.save(any(InventoryItem.class))).thenReturn(inv);
 
         // mock product repo find(), which is called by service when adding inventory item
-        when(productRepo.findByProductId(product.getId())).thenReturn(Optional.of(product));
+        when(productRepo.findById(product.getId())).thenReturn(Optional.of(product));
 
         // verify correct inventory item was added
         InventoryItem savedInv = service.addInventoryItem(new InventoryRequestDto(1L, product.getId(), 5, "aisle 1", currentTime));
@@ -64,7 +64,7 @@ class InventoryServiceTest {
 
         // verify repo was called only once
         verify(invRepo, times(1)).save(any(InventoryItem.class));
-        verify(productRepo, times(1)).findByProductId(product.getId());
+        verify(productRepo, times(1)).findById(product.getId());
     }
 
     @Test

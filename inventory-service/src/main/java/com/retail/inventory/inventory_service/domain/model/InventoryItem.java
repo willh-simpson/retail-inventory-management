@@ -35,6 +35,13 @@ public class InventoryItem {
         this.lastUpdated = lastUpdated;
     }
 
+    public InventoryItem(Product product, int quantity, String location, LocalDateTime lastUpdated) {
+        this.product = product;
+        this.quantity = quantity;
+        this.location = location;
+        this.lastUpdated = lastUpdated;
+    }
+
     public Long getId() {
         return id;
     }

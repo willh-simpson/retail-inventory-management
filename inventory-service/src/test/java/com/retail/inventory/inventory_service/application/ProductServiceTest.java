@@ -49,7 +49,7 @@ class ProductServiceTest {
         when(productRepo.save(any(Product.class))).thenReturn(product);
 
         // mock category repo find()
-        when(categoryRepo.findByCategoryId(cat.getId())).thenReturn(Optional.of(cat));
+        when(categoryRepo.findById(cat.getId())).thenReturn(Optional.of(cat));
 
         // verify the correct product was added
         Product savedProduct = service.addProduct(new ProductRequestDto(1L, "00589837", "example", "example desc", 9.99, 1L));
@@ -60,7 +60,7 @@ class ProductServiceTest {
 
         // verify repo functions were called only once
         verify(productRepo, times(1)).save(any(Product.class));
-        verify(categoryRepo, times(1)).findByCategoryId(cat.getId());
+        verify(categoryRepo, times(1)).findById(cat.getId());
     }
 
     @Test
@@ -122,7 +122,7 @@ class ProductServiceTest {
         Product product = new Product(1L, "00589837", "example", "example desc", 9.99, cat);
 
         // mock repo find()
-        when(productRepo.findByProductId(1L)).thenReturn(Optional.of(product));
+        when(productRepo.findById(1L)).thenReturn(Optional.of(product));
 
         // mock repo save()
         when(productRepo.save(product)).thenAnswer(i -> i.getArgument(0));
@@ -132,7 +132,7 @@ class ProductServiceTest {
         assertThat(newPrice.getPrice()).isEqualTo(10.99);
 
         // verify repo functions were called only once
-        verify(productRepo, times(1)).findByProductId(product.getId());
+        verify(productRepo, times(1)).findById(product.getId());
         verify(productRepo, times(1)).save(any(Product.class));
     }
 }

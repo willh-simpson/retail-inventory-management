@@ -30,6 +30,15 @@ public class Product {
         this.id = id;
         this.sku = sku;
         this.name = name;
+        this.description = description;
+        this.price = price;
+        this.category = category;
+    }
+
+    public Product(String sku, String name, String description, double price, Category category) {
+        this.sku = sku;
+        this.name = name;
+        this.description = description;
         this.price = price;
         this.category = category;
     }

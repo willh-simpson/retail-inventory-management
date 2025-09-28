@@ -24,7 +24,7 @@ public class ProductService {
 
     private Product fromRequestDto(ProductRequestDto req) {
         Category category = categoryRepo
-                .findByCategoryId(req.categoryId())
+                .findById(req.categoryId())
                 .orElseThrow(() -> new RuntimeException("Category not found"));
 
         return new Product(req.id(), req.sku(), req.name(), req.description(), req.price(), category);
@@ -72,7 +72,7 @@ public class ProductService {
      */
     public Product updatePrice(Long id, double price) {
         Product product = productRepo
-                .findByProductId(id)
+                .findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
         product.setPrice(price);

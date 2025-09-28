@@ -40,7 +40,7 @@ public class CategoryService {
 
     public Category changeName(Long id, String name) {
         Category category = repo
-                .findByCategoryId(id)
+                .findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found"));
 
         category.setName(name);

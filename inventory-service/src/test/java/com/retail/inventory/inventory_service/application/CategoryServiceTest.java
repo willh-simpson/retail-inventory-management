@@ -100,7 +100,7 @@ public class CategoryServiceTest {
         Category cat = new Category(1L, "example", "example desc");
 
         // mock repo find()
-        when(repo.findByCategoryId(cat.getId())).thenReturn(Optional.of(cat));
+        when(repo.findById(cat.getId())).thenReturn(Optional.of(cat));
 
         // mock repo save()
         when(repo.save(cat)).thenAnswer(i -> i.getArgument(0));
@@ -110,7 +110,7 @@ public class CategoryServiceTest {
         assertThat(newCat.getName()).isEqualTo("new name");
 
         // verify repo functions were called only once
-        verify(repo, times(1)).findByCategoryId(cat.getId());
+        verify(repo, times(1)).findById(cat.getId());
         verify(repo, times(1)).save(any(Category.class));
     }
 }

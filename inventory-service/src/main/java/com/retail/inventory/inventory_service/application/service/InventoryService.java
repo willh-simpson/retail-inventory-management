@@ -25,7 +25,7 @@ public class InventoryService {
 
     private InventoryItem fromRequestDto(InventoryRequestDto req) {
         Product product = productRepo
-                .findByProductId(req.productId())
+                .findById(req.productId())
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
         return new InventoryItem(req.id(), product, req.quantity(), req.location(), req.lastUpdated());
