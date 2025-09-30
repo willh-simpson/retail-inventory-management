@@ -8,5 +8,17 @@ spring:
       ddl-auto: update # suggested to replace this with 'validate' or do migrations later
     show-sql: true
     # database-platform: org.hibernate.dialect.PostgreSQLDialect
+
 server:
   port: 8080
+
+management:
+  endpoints:
+    exposure:
+      include: health, info, prometheus, metrics, loggers
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}

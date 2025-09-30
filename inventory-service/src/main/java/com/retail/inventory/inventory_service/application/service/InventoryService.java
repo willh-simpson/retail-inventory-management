@@ -1,10 +1,12 @@
 package com.retail.inventory.inventory_service.application.service;
 
 import com.retail.inventory.inventory_service.api.dto.InventoryRequestDto;
+import com.retail.inventory.inventory_service.api.dto.InventorySnapshot;
 import com.retail.inventory.inventory_service.domain.model.InventoryItem;
 import com.retail.inventory.inventory_service.domain.model.Product;
 import com.retail.inventory.inventory_service.domain.repository.InventoryRepository;
 import com.retail.inventory.inventory_service.domain.repository.ProductRepository;
+import com.retail.inventory.inventory_service.infrastructure.messaging.InventoryEventProducer;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -18,9 +20,12 @@ public class InventoryService {
     private final InventoryRepository invRepo;
     private final ProductRepository productRepo;
 
-    public InventoryService(InventoryRepository invRepo, ProductRepository productRepo) {
+    private final InventoryEventProducer invEvent;
+
+    public InventoryService(InventoryRepository invRepo, ProductRepository productRepo, InventoryEventProducer invEvent) {
         this.invRepo = invRepo;
         this.productRepo = productRepo;
+        this.invEvent = invEvent;
     }
 
     private InventoryItem fromRequestDto(InventoryRequestDto req) {
@@ -29,6 +34,12 @@ public class InventoryService {
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
         return new InventoryItem(req.id(), product, req.quantity(), req.location(), req.lastUpdated());
+    }
+
+    private InventoryItem publishInventoryEvent(InventoryItem item) {
+        invEvent.publish(InventorySnapshot.fromEntity(item));
+
+        return item;
     }
 
     /**
@@ -60,8 +71,9 @@ public class InventoryService {
      */
     public InventoryItem addInventoryItem(InventoryRequestDto req) {
         InventoryItem item = fromRequestDto(req);
+        InventoryItem savedItem = invRepo.save(item);
 
-        return invRepo.save(item);
+        return publishInventoryEvent(savedItem);
     }
 
     /**
@@ -79,6 +91,8 @@ public class InventoryService {
         item.setQuantity(item.getQuantity() + quantity);
         item.setLastUpdated(LocalDateTime.now());
 
-        return invRepo.save(item);
+        InventoryItem savedItem = invRepo.save(item);
+
+        return publishInventoryEvent(savedItem);
     }
 }
