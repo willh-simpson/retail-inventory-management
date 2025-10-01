@@ -1,4 +1,4 @@
-package com.retail.inventory.order_service.api.dto;
+package com.retail.inventory.order_service.api.dto.snapshot;
 
 import com.retail.inventory.order_service.domain.model.ProductSnapshotEntity;
 

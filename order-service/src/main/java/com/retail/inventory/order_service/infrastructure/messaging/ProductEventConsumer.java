@@ -2,7 +2,7 @@ package com.retail.inventory.order_service.infrastructure.messaging;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.retail.inventory.common.messaging.Envelope;
-import com.retail.inventory.order_service.api.dto.ProductSnapshot;
+import com.retail.inventory.order_service.api.dto.snapshot.ProductSnapshot;
 import com.retail.inventory.order_service.domain.model.ProductSnapshotEntity;
 import com.retail.inventory.order_service.domain.repository.ProductSnapshotRepository;
 import io.micrometer.core.instrument.MeterRegistry;

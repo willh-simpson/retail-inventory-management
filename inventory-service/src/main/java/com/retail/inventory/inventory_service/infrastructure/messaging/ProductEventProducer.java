@@ -1,6 +1,6 @@
 package com.retail.inventory.inventory_service.infrastructure.messaging;
 
-import com.retail.inventory.inventory_service.api.dto.ProductSnapshot;
+import com.retail.inventory.inventory_service.api.dto.snapshot.ProductSnapshot;
 import com.retail.inventory.inventory_service.domain.model.EventVersion;
 import com.retail.inventory.inventory_service.domain.repository.EventVersionRepository;
 import com.retail.inventory.common.messaging.Envelope;

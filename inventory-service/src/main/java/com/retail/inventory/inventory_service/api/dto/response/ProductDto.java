@@ -1,4 +1,4 @@
-package com.retail.inventory.inventory_service.api.dto;
+package com.retail.inventory.inventory_service.api.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.retail.inventory.inventory_service.domain.model.Product;

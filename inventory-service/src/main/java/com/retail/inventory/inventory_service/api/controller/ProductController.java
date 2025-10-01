@@ -1,8 +1,8 @@
 package com.retail.inventory.inventory_service.api.controller;
 
-import com.retail.inventory.inventory_service.api.dto.ProductDto;
-import com.retail.inventory.inventory_service.api.dto.ProductPriceRequest;
-import com.retail.inventory.inventory_service.api.dto.ProductRequestDto;
+import com.retail.inventory.inventory_service.api.dto.response.ProductDto;
+import com.retail.inventory.inventory_service.api.dto.request.ProductPriceRequest;
+import com.retail.inventory.inventory_service.api.dto.request.ProductRequestDto;
 import com.retail.inventory.inventory_service.application.service.ProductService;
 import com.retail.inventory.inventory_service.domain.model.Product;
 import org.springframework.http.HttpStatus;

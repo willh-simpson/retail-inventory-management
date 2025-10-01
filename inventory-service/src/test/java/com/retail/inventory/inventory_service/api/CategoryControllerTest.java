@@ -1,7 +1,7 @@
 package com.retail.inventory.inventory_service.api;
 
 import com.retail.inventory.inventory_service.api.controller.CategoryController;
-import com.retail.inventory.inventory_service.api.dto.CategoryRequestDto;
+import com.retail.inventory.inventory_service.api.dto.request.CategoryRequestDto;
 import com.retail.inventory.inventory_service.application.service.CategoryService;
 import com.retail.inventory.inventory_service.domain.model.Category;
 import org.junit.jupiter.api.Test;

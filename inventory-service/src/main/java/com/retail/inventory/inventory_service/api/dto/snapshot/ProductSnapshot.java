@@ -1,4 +1,4 @@
-package com.retail.inventory.inventory_service.api.dto;
+package com.retail.inventory.inventory_service.api.dto.snapshot;
 
 import java.util.Map;
 

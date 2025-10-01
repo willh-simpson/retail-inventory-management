@@ -1,7 +1,6 @@
 package com.retail.inventory.inventory_service.infrastructure.messaging;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.retail.inventory.inventory_service.api.dto.ProductSnapshot;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.context.annotation.Bean;

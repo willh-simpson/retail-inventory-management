@@ -20,6 +20,15 @@ public class Order {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items;
 
+    public Order() {
+
+    }
+
+    public Order(String status, List<OrderItem> items) {
+        this.status = status;
+        this.items = items;
+    }
+
     public Long getId() {
         return id;
     }

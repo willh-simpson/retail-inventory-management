@@ -1,10 +1,13 @@
 package com.retail.inventory.inventory_service.api.controller;
 
-import com.retail.inventory.inventory_service.api.dto.InventoryItemDto;
-import com.retail.inventory.inventory_service.api.dto.InventoryRequestDto;
-import com.retail.inventory.inventory_service.api.dto.StockRequest;
+import com.retail.inventory.inventory_service.api.dto.request.InventoryReservationRequest;
+import com.retail.inventory.inventory_service.api.dto.response.InventoryItemDto;
+import com.retail.inventory.inventory_service.api.dto.request.InventoryRequestDto;
+import com.retail.inventory.inventory_service.api.dto.request.StockRequest;
+import com.retail.inventory.inventory_service.api.dto.response.InventoryReservationResponse;
 import com.retail.inventory.inventory_service.application.service.InventoryService;
 import com.retail.inventory.inventory_service.domain.model.InventoryItem;
+import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -53,5 +56,22 @@ public class InventoryController {
         InventoryItem item = service.addStock(productId, req.quantity());
 
         return ResponseEntity.ok(InventoryItemDto.fromEntity(item));
+    }
+
+    @PutMapping("/reserve")
+    @Transactional
+    public ResponseEntity<InventoryReservationResponse> reserveInventory(@RequestBody InventoryReservationRequest req) {
+        InventoryItem item = service.getInventoryItem(req.productId());
+
+        if (item.getQuantity() < req.quantity()) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body(new InventoryReservationResponse(false, "Insufficient stock"));
+        }
+
+        // subtract stock using addStock()
+        addStock(item.getProduct().getId(), new StockRequest(-req.quantity()));
+
+        return ResponseEntity.ok(new InventoryReservationResponse(true, "Reserved"));
     }
 }

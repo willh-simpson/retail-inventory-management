@@ -16,6 +16,12 @@ public class OrderItem {
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
 
+    public OrderItem(String sku, int quantity, double price) {
+        this.sku = sku;
+        this.quantity = quantity;
+        this.price = price;
+    }
+
     public Long getId() {
         return id;
     }

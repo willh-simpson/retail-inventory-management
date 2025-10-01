@@ -1,7 +1,7 @@
 package com.retail.inventory.inventory_service.api;
 
 import com.retail.inventory.inventory_service.api.controller.ProductController;
-import com.retail.inventory.inventory_service.api.dto.ProductRequestDto;
+import com.retail.inventory.inventory_service.api.dto.request.ProductRequestDto;
 import com.retail.inventory.inventory_service.application.service.ProductService;
 import com.retail.inventory.inventory_service.domain.model.Category;
 import com.retail.inventory.inventory_service.domain.model.Product;

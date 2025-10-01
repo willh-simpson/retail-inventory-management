@@ -1,7 +1,7 @@
 package com.retail.inventory.inventory_service.application.service;
 
-import com.retail.inventory.inventory_service.api.dto.ProductRequestDto;
-import com.retail.inventory.inventory_service.api.dto.ProductSnapshot;
+import com.retail.inventory.inventory_service.api.dto.request.ProductRequestDto;
+import com.retail.inventory.inventory_service.api.dto.snapshot.ProductSnapshot;
 import com.retail.inventory.inventory_service.domain.model.Category;
 import com.retail.inventory.inventory_service.domain.model.Product;
 import com.retail.inventory.inventory_service.domain.repository.CategoryRepository;

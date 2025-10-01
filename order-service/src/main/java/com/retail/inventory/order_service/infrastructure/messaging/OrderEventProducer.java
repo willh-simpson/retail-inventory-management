@@ -13,7 +13,7 @@ public class OrderEventProducer {
         this.kafka = kafka;
     }
 
-    public void publishOrderCreated(OrderCreatedEvent event) {
+    public void publish(OrderCreatedEvent event) {
         kafka.send("order.created", event);
     }
 

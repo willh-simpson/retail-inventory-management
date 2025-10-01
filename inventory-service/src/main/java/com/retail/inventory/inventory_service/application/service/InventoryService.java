@@ -1,7 +1,7 @@
 package com.retail.inventory.inventory_service.application.service;
 
-import com.retail.inventory.inventory_service.api.dto.InventoryRequestDto;
-import com.retail.inventory.inventory_service.api.dto.InventorySnapshot;
+import com.retail.inventory.inventory_service.api.dto.request.InventoryRequestDto;
+import com.retail.inventory.inventory_service.api.dto.snapshot.InventorySnapshot;
 import com.retail.inventory.inventory_service.domain.model.InventoryItem;
 import com.retail.inventory.inventory_service.domain.model.Product;
 import com.retail.inventory.inventory_service.domain.repository.InventoryRepository;
@@ -20,12 +20,12 @@ public class InventoryService {
     private final InventoryRepository invRepo;
     private final ProductRepository productRepo;
 
-    private final InventoryEventProducer invEvent;
+    private final InventoryEventProducer eventProducer;
 
     public InventoryService(InventoryRepository invRepo, ProductRepository productRepo, InventoryEventProducer invEvent) {
         this.invRepo = invRepo;
         this.productRepo = productRepo;
-        this.invEvent = invEvent;
+        this.eventProducer = invEvent;
     }
 
     private InventoryItem fromRequestDto(InventoryRequestDto req) {
@@ -37,7 +37,7 @@ public class InventoryService {
     }
 
     private InventoryItem publishInventoryEvent(InventoryItem item) {
-        invEvent.publish(InventorySnapshot.fromEntity(item));
+        eventProducer.publish(InventorySnapshot.fromEntity(item));
 
         return item;
     }
