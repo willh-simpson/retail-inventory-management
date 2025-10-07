@@ -51,7 +51,7 @@ public class ProductService {
      * @return matching product or throw error if not found
      */
     public Product getProduct(String sku) {
-        long start = System.nanoTime();
+        long start = System.currentTimeMillis();
 
         try {
             Product product = productRepo
@@ -64,9 +64,12 @@ public class ProductService {
             meterRegistry.counter("products.found").increment();
 
             return product;
+        } catch (Exception e) {
+            meterRegistry.counter("products.errors").increment();
+            throw e;
         } finally {
-            long duration = System.nanoTime() - start;
-            meterRegistry.timer("products.lookup.time").record(duration, TimeUnit.NANOSECONDS);
+            long duration = System.currentTimeMillis() - start;
+            meterRegistry.timer("products.lookup.time").record(duration, TimeUnit.MILLISECONDS);
         }
     }
 

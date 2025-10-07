@@ -1,7 +1,7 @@
-package com.retail.inventory.order_service.api.dto;
+package com.retail.inventory.order_service.api.dto.event;
 
-import com.retail.inventory.order_service.domain.model.Order;
-import com.retail.inventory.order_service.domain.model.OrderItem;
+import com.retail.inventory.order_service.domain.model.order.Order;
+import com.retail.inventory.order_service.domain.model.order.OrderItem;
 
 import java.time.LocalDateTime;
 import java.util.List;

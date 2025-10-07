@@ -1,6 +1,6 @@
 package com.retail.inventory.order_service.domain.repository;
 
-import com.retail.inventory.order_service.domain.model.ProductSnapshotEntity;
+import com.retail.inventory.order_service.domain.model.snapshot.ProductSnapshotEntity;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 

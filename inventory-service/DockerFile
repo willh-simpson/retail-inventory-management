@@ -1,0 +1,14 @@
+# base image with Java 17 JDK
+FROM eclipse-temurin:17-jdk
+
+# set build arg to pick up built JAR
+ARG JAR_FILE=target/*.jar
+
+# copy jar into container
+COPY ${JAR_FILE} app.jar
+
+# expose default Spring Boot port
+EXPOSE 8080
+
+# start service
+ENTRYPOINT ["java","-jar","/app.jar"]

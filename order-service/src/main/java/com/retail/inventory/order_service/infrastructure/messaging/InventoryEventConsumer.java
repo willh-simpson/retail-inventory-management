@@ -3,8 +3,10 @@ package com.retail.inventory.order_service.infrastructure.messaging;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.retail.inventory.common.messaging.Envelope;
 import com.retail.inventory.order_service.api.dto.snapshot.InventorySnapshot;
-import com.retail.inventory.order_service.domain.model.InventorySnapshotEntity;
+import com.retail.inventory.order_service.domain.model.event.ProcessedEvent;
+import com.retail.inventory.order_service.domain.model.snapshot.InventorySnapshotEntity;
 import com.retail.inventory.order_service.domain.repository.InventorySnapshotRepository;
+import com.retail.inventory.order_service.domain.repository.ProcessedEventRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -13,20 +15,27 @@ import org.springframework.stereotype.Service;
 @Service
 public class InventoryEventConsumer {
     private final InventorySnapshotRepository snapshotRepo;
+    private final ProcessedEventRepository processedRepo;
     private final MeterRegistry meterRegistry;
     private final ObjectMapper mapper;
 
-    public InventoryEventConsumer(InventorySnapshotRepository snapshotRepo, MeterRegistry meterRegistry, ObjectMapper mapper) {
+    public InventoryEventConsumer(InventorySnapshotRepository snapshotRepo, ProcessedEventRepository processedRepo, MeterRegistry meterRegistry, ObjectMapper mapper) {
         this.snapshotRepo = snapshotRepo;
+        this.processedRepo = processedRepo;
         this.meterRegistry = meterRegistry;
         this.mapper = mapper;
     }
 
     @KafkaListener(topics = "${kafka.topics.inventorySnapshots}", groupId = "${kafka.groupId}")
-    public void consume(ConsumerRecord<String, Envelope> record) {
+    public void consume(ConsumerRecord<String, Envelope<InventorySnapshot>> record) {
         try {
-            Envelope envelope = record.value();
+            Envelope<InventorySnapshot> envelope = record.value();
             InventorySnapshot payload = mapper.convertValue(envelope.getPayload(), InventorySnapshot.class);
+
+            // check if item has already been processed
+            if (processedRepo.existsById(envelope.getEventId())) {
+                return; // duplicate event: ignore
+            }
 
             // check version
             InventorySnapshotEntity existing = snapshotRepo
@@ -39,10 +48,11 @@ public class InventoryEventConsumer {
             } else {
                 meterRegistry.counter("inventory.events.ignored_stale").increment();
             }
+
+            // mark event as processed
+            processedRepo.save(new ProcessedEvent(envelope.getEventId()));
         } catch (Exception e) {
             meterRegistry.counter("inventory.events.failed").increment();
-
-            throw e;
         }
     }
 }

@@ -1,4 +1,4 @@
-package com.retail.inventory.order_service.domain.model;
+package com.retail.inventory.order_service.domain.model.snapshot;
 
 import jakarta.persistence.Id;
 import org.springframework.data.mongodb.core.mapping.Document;

@@ -55,6 +55,18 @@ public class InventoryService {
     }
 
     /**
+     * return inventory information for a specific product via its SKU
+     *
+     * @param productSku product to request inventory information
+     * @return matching inventory or throw error if not found
+     */
+    public InventoryItem getInventoryItemBySku(String productSku) {
+        return invRepo
+                .findByProductSku(productSku)
+                .orElseThrow(() -> new RuntimeException("Inventory item not found"));
+    }
+
+    /**
      * return all inventory information for each product
      *
      * @return list of all inventory for all mapped products

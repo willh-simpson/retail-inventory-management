@@ -1,4 +1,4 @@
-package com.retail.inventory.order_service.domain.model;
+package com.retail.inventory.order_service.domain.model.order;
 
 import jakarta.persistence.*;
 

@@ -3,7 +3,7 @@ package com.retail.inventory.order_service.infrastructure.messaging;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.retail.inventory.common.messaging.Envelope;
 import com.retail.inventory.order_service.api.dto.snapshot.CategorySnapshot;
-import com.retail.inventory.order_service.domain.model.CategorySnapshotEntity;
+import com.retail.inventory.order_service.domain.model.snapshot.CategorySnapshotEntity;
 import com.retail.inventory.order_service.domain.repository.CategorySnapshotRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -23,9 +23,9 @@ public class CategoryEventConsumer {
     }
 
     @KafkaListener(topics = "${kafka.topics.categorySnapshots}", groupId = "${kafka.groupId}")
-    public void consume(ConsumerRecord<String, Envelope> record) {
+    public void consume(ConsumerRecord<String, Envelope<CategorySnapshot>> record) {
         try {
-            Envelope envelope = record.value();
+            Envelope<CategorySnapshot> envelope = record.value();
             CategorySnapshot payload = mapper.convertValue(envelope.getPayload(), CategorySnapshot.class);
 
             // check version
@@ -41,8 +41,6 @@ public class CategoryEventConsumer {
             }
         } catch (Exception e) {
             meterRegistry.counter("categories.events.failed").increment();
-
-            throw e;
         }
     }
 }

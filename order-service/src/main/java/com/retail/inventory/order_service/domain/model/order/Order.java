@@ -1,4 +1,4 @@
-package com.retail.inventory.order_service.domain.model;
+package com.retail.inventory.order_service.domain.model.order;
 
 import jakarta.persistence.*;
 
@@ -14,7 +14,7 @@ public class Order {
 
     private String customerId;
     private double total;
-    private String status; // implemented from OrderStatus
+    private OrderStatus status; // implemented from OrderStatus
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -24,7 +24,7 @@ public class Order {
 
     }
 
-    public Order(String status, List<OrderItem> items) {
+    public Order(OrderStatus status, List<OrderItem> items) {
         this.status = status;
         this.items = items;
     }
@@ -53,11 +53,11 @@ public class Order {
         this.total = total;
     }
 
-    public String getStatus() {
+    public OrderStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(OrderStatus status) {
         this.status = status;
     }
 

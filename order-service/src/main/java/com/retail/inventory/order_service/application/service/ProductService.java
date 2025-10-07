@@ -1,6 +1,6 @@
 package com.retail.inventory.order_service.application.service;
 
-import com.retail.inventory.order_service.domain.model.ProductSnapshotEntity;
+import com.retail.inventory.order_service.domain.model.snapshot.ProductSnapshotEntity;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import org.springframework.boot.web.client.RestTemplateBuilder;
@@ -24,7 +24,7 @@ public class ProductService {
     }
 
     // fallback if circuit breaker is OPEN or retries fail
-    public ProductSnapshotEntity getProductFallback(String sku, Throwable ex) {
+    public ProductSnapshotEntity getProductFallback(String sku, Throwable t) {
         return new ProductSnapshotEntity(sku, "Unavailable", "Product service is down", 0.0, Map.of(), -1L);
     }
 }

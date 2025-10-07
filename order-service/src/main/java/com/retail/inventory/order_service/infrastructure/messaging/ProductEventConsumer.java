@@ -3,7 +3,8 @@ package com.retail.inventory.order_service.infrastructure.messaging;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.retail.inventory.common.messaging.Envelope;
 import com.retail.inventory.order_service.api.dto.snapshot.ProductSnapshot;
-import com.retail.inventory.order_service.domain.model.ProductSnapshotEntity;
+import com.retail.inventory.order_service.domain.model.snapshot.ProductSnapshotEntity;
+import com.retail.inventory.order_service.domain.repository.ProcessedEventRepository;
 import com.retail.inventory.order_service.domain.repository.ProductSnapshotRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -13,20 +14,28 @@ import org.springframework.stereotype.Component;
 @Component
 public class ProductEventConsumer {
     private final ProductSnapshotRepository snapshotRepo;
+    private final ProcessedEventRepository eventRepo;
     private final MeterRegistry meterRegistry;
     private final ObjectMapper mapper;
 
-    public ProductEventConsumer(ProductSnapshotRepository snapshotRepo, MeterRegistry meterRegistry, ObjectMapper mapper) {
+    public ProductEventConsumer(ProductSnapshotRepository snapshotRepo, ProcessedEventRepository eventRepo, MeterRegistry meterRegistry, ObjectMapper mapper) {
         this.snapshotRepo = snapshotRepo;
+        this.eventRepo = eventRepo;
         this.meterRegistry = meterRegistry;
         this.mapper = mapper;
     }
 
     @KafkaListener(topics = "${kafka.topics.productSnapshots}", groupId = "${kafka.groupId}")
-    public void consume(ConsumerRecord<String, Envelope> record) {
+    public void consume(ConsumerRecord<String, Envelope<ProductSnapshot>> record) {
         try {
-            Envelope envelope = record.value();
+            Envelope<ProductSnapshot> envelope = record.value();
             ProductSnapshot payload = mapper.convertValue(envelope.getPayload(), ProductSnapshot.class);
+
+            // check if event is already processed
+            if (eventRepo.existsById(envelope.getEventId())) {
+                meterRegistry.counter("products.events.duplicate").increment();
+                return;
+            }
 
             // check version
             ProductSnapshotEntity existing = snapshotRepo
@@ -41,8 +50,6 @@ public class ProductEventConsumer {
             }
         } catch (Exception e) {
             meterRegistry.counter("products.events.failed").increment();
-
-            throw e;
         }
     }
 }

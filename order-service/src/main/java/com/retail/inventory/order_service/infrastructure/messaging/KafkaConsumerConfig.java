@@ -1,7 +1,7 @@
 package com.retail.inventory.order_service.infrastructure.messaging;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.retail.inventory.order_service.domain.model.ProductSnapshotEntity;
+import com.retail.inventory.order_service.domain.model.snapshot.ProductSnapshotEntity;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.context.annotation.Bean;

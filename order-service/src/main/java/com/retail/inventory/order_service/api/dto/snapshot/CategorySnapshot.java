@@ -1,6 +1,6 @@
 package com.retail.inventory.order_service.api.dto.snapshot;
 
-import com.retail.inventory.order_service.domain.model.CategorySnapshotEntity;
+import com.retail.inventory.order_service.domain.model.snapshot.CategorySnapshotEntity;
 
 public record CategorySnapshot(
         String name,

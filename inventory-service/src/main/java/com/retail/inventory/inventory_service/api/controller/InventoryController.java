@@ -44,6 +44,13 @@ public class InventoryController {
         return ResponseEntity.ok(InventoryItemDto.fromEntity(item));
     }
 
+    @GetMapping("/{product_sku}")
+    public ResponseEntity<InventoryItemDto> getInventoryItemBySku(@PathVariable("product_sku") String productSku) {
+        InventoryItem item = service.getInventoryItemBySku(productSku);
+
+        return ResponseEntity.ok(InventoryItemDto.fromEntity(item));
+    }
+
     @GetMapping
     public ResponseEntity<List<InventoryItemDto>> getAllInventory() {
         List<InventoryItem> items = service.getAllInventory();

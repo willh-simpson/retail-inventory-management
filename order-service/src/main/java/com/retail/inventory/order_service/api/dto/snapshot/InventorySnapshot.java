@@ -1,6 +1,6 @@
 package com.retail.inventory.order_service.api.dto.snapshot;
 
-import com.retail.inventory.order_service.domain.model.InventorySnapshotEntity;
+import com.retail.inventory.order_service.domain.model.snapshot.InventorySnapshotEntity;
 
 import java.time.LocalDateTime;
 
