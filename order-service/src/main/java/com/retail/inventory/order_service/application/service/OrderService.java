@@ -1,5 +1,6 @@
 package com.retail.inventory.order_service.application.service;
 
+import com.retail.inventory.common.messaging.InventoryReservationStatus;
 import com.retail.inventory.order_service.api.dto.event.OrderCreatedEvent;
 import com.retail.inventory.order_service.api.dto.request.OrderItemRequest;
 import com.retail.inventory.order_service.api.dto.request.OrderRequest;
@@ -11,9 +12,9 @@ import com.retail.inventory.order_service.domain.model.order.Order;
 import com.retail.inventory.order_service.domain.model.order.OrderItem;
 import com.retail.inventory.order_service.domain.model.order.OrderRetry;
 import com.retail.inventory.order_service.domain.model.order.OrderStatus;
-import com.retail.inventory.order_service.domain.model.snapshot.ProductSnapshotEntity;
-import com.retail.inventory.order_service.domain.repository.OrderRepository;
-import com.retail.inventory.order_service.domain.repository.RetryRepository;
+import com.retail.inventory.order_service.domain.model.snapshot.ProductSnapshot;
+import com.retail.inventory.order_service.domain.repository.order.OrderRepository;
+import com.retail.inventory.order_service.domain.repository.order.RetryRepository;
 import com.retail.inventory.order_service.infrastructure.client.InventoryClient;
 import com.retail.inventory.order_service.infrastructure.messaging.OrderEventProducer;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
@@ -42,18 +43,32 @@ public class OrderService {
 
     private void validate(OrderRequest req) {
         if (req == null || req.items() == null || req.items().isEmpty()) {
-            throw new ValidationException("Order must contain at least 1 item");
+            throw new ValidationException(ValidationException.Message.NO_ITEMS);
         }
 
         for (OrderItemRequest item : req.items()) {
             if (item.sku() == null || item.sku().isBlank()) {
-                throw new ValidationException("Items must have a SKU");
+                throw new ValidationException(ValidationException.Message.MISSING_SKU);
             }
 
             if (item.quantity() <= 0) {
-                throw new ValidationException("Quantity must be greater than 0");
+                throw new ValidationException(
+                        ValidationException.Message.INVALID_QUANTITY,
+                        " -> " + item.sku() + ": " + item.quantity()
+                );
             }
         }
+    }
+
+    private double getTotal(List<OrderItem> items) {
+        return items.stream()
+                .mapToDouble(i -> i.getPrice() * i.getQuantity())
+                .sum();
+    }
+
+    public Order getById(Long id) {
+        return orderRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
     }
 
     @Transactional
@@ -65,7 +80,7 @@ public class OrderService {
         List<OrderItem> items = req.items()
                 .stream()
                 .map(dto -> {
-                    ProductSnapshotEntity snapshot = proService.getProductBySku(dto.sku());
+                    ProductSnapshot snapshot = proService.getProductBySku(dto.sku());
                     return new OrderItem(
                             snapshot.getSku(),
                             dto.quantity(),
@@ -74,53 +89,78 @@ public class OrderService {
                 })
                 .toList();
 
+        ReserveResponse result;
         try {
             // attempt to reserve stock in inventory_service
-            ReserveResponse reserved = reserve(new ReserveRequest(items));
+            result = reserve(new ReserveRequest(items));
+        } catch (Exception e) {
+            result = ReserveResponse.systemError("Unexpected error during reservation");
+        }
 
-            if (reserved.success()) {
-                // set up successful order to communicate to service and publish to repo
+        return switch (result.status()) {
+            case SUCCESS -> {
                 Order order = new Order(
                         OrderStatus.CONFIRMED,
                         items
                 );
 
+                items.forEach(i -> i.setOrder(order));
+                order.setTotal(getTotal(items));
+
                 Order saved = orderRepo.save(order);
-                items.forEach(i -> i.setOrder(saved));
 
                 // publish event to kafka
-                OrderCreatedEvent event = OrderCreatedEvent.fromEntity(saved);
-                eventProducer.publish(event);
+                eventProducer.publish(OrderCreatedEvent.fromEntity(saved));
 
-                return saved;
-            } else {
-                throw new ReservationFailedException("Reservation failed");
+                yield saved;
             }
-        } catch (Exception e) {
-            return new Order(
-                    OrderStatus.PENDING,
-                    items
-            );
-        }
+
+            case INSUFFICIENT_STOCK, OUT_OF_STOCK, DISCONTINUED -> throw new ReservationFailedException(result.message());
+
+            case ERROR -> {
+                // queue order for retry
+                Order order = new Order(
+                        OrderStatus.PENDING_RETRY,
+                        items
+                );
+                items.forEach(i -> i.setOrder(order));
+                order.setTotal(getTotal(items));
+
+                // retry order needs to be persisted so retry system can find it
+                yield orderRepo.save(order);
+            }
+        };
     }
 
     @Retry(name = "inventoryRetry", fallbackMethod = "reserveFallback")
     @CircuitBreaker(name = "inventoryCircuitBreaker", fallbackMethod = "reserveFallback")
     public ReserveResponse reserve(ReserveRequest req) {
         ReserveResponse res = client.reserve(req);
+        InventoryReservationStatus status = res.status();
 
-        if (!res.success()) {
-            throw new ReservationFailedException("Reservation rejected");
-        }
+        return switch (status) {
+            // business failure: do not retry
+            case INSUFFICIENT_STOCK , OUT_OF_STOCK, DISCONTINUED -> res;
 
-        return res;
+            // technical failure: allow retry
+            case ERROR -> throw new ReservationFailedException("Error during reservation");
+
+            case SUCCESS -> res;
+        };
     }
 
-    public ReserveResponse reserveFallback(ReserveRequest items, Throwable t) {
+    public ReserveResponse reserveFallback(ReserveRequest req, Throwable t) {
         ReserveResponse res;
 
-        retryRepo.save(new OrderRetry(new Order(OrderStatus.PENDING, items.items()), LocalDateTime.now()));
-        res = new ReserveResponse(false, "Queued for retry");
+        retryRepo.save(
+                new OrderRetry(
+                        new Order(
+                                OrderStatus.PENDING_RETRY,
+                                req.items()),
+                        LocalDateTime.now()
+                )
+        );
+        res = ReserveResponse.systemError("Queued for retry");
 
         return res;
     }

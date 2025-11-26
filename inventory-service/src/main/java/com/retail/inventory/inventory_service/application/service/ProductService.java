@@ -102,7 +102,6 @@ public class ProductService {
                 saved.getPrice(),
                 Map.of("category", saved.getCategory().getName())
         );
-
         eventProducer.publish(snapshot);
 
         return saved;

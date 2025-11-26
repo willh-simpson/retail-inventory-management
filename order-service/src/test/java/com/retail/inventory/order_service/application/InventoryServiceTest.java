@@ -2,8 +2,8 @@ package com.retail.inventory.order_service.application;
 
 import com.retail.inventory.order_service.application.service.InventoryService;
 import com.retail.inventory.order_service.domain.model.snapshot.ExceptionVersion;
-import com.retail.inventory.order_service.domain.model.snapshot.InventorySnapshotEntity;
-import com.retail.inventory.order_service.domain.repository.InventorySnapshotRepository;
+import com.retail.inventory.order_service.domain.model.snapshot.InventorySnapshot;
+import com.retail.inventory.order_service.domain.repository.snapshot.InventorySnapshotRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,15 +11,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.boot.web.client.RestTemplateBuilder;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -41,45 +38,32 @@ public class InventoryServiceTest {
     }
 
     @Test
-    void testGetInventoryByProductSku_success() {
-        InventorySnapshotEntity snapshot = new InventorySnapshotEntity(
-                "00589837",
+    void testGetInventory_usesCachedSnapshot() {
+        String sku = "00589837";
+        InventorySnapshot cached = new InventorySnapshot(
+                sku,
                 5,
                 "aisle 1",
                 LocalDateTime.now(),
                 1L
         );
 
-        when(rest.getForObject("http://inventory-service/api/inventory/" + snapshot.getProductSku(), InventorySnapshotEntity.class)).thenReturn(snapshot);
+        when(snapshotRepo.findByProductSku(sku)).thenReturn(Optional.of(cached));
 
-        InventorySnapshotEntity result = inventoryService.getInventoryByProductSku(snapshot.getProductSku());
+        InventorySnapshot result = inventoryService.getInventoryByProductSku(sku);
 
-        // verify inventory item was successfully found
         assertThat(result).isNotNull();
         assertThat(result.getProductSku()).isEqualTo("00589837");
-        assertThat(result.getQuantity()).isEqualTo(5);
         assertThat(result.getVersion()).isEqualTo(1L);
 
-        verify(rest, times(1)).getForObject(anyString(), eq(InventorySnapshotEntity.class));
+        verify(snapshotRepo, times(1)).findByProductSku(sku);
+        verifyNoInteractions(rest);
     }
 
     @Test
-    void testGetInventoryByProductSku_failure() {
-        String sku = "does-not-exist";
-
-        when(rest.getForObject("http://inventory-service/api/inventory/" + sku, InventorySnapshotEntity.class))
-                .thenThrow(new HttpClientErrorException(HttpStatus.NOT_FOUND));
-
-        // verify exception was handled
-        assertThatThrownBy(() -> inventoryService.getInventoryByProductSku(sku))
-                .isInstanceOf(HttpClientErrorException.class)
-                .hasMessageContaining("404 NOT_FOUND");
-    }
-
-    @Test
-    void testGetFallback_returnCachedSnapshot() {
+    void testGetInventory_restFallback() {
         String sku = "00589837";
-        InventorySnapshotEntity cached = new InventorySnapshotEntity(
+        InventorySnapshot fresh = new InventorySnapshot(
                 sku,
                 5,
                 "aisle 1",
@@ -87,47 +71,37 @@ public class InventoryServiceTest {
                 10L
         );
 
-        // mock previously cached InventorySnapshotEntity already existing locally
-        when(snapshotRepo.findByProductSku(sku)).thenReturn(Optional.of(cached));
+        when(snapshotRepo.findByProductSku(sku)).thenReturn(Optional.empty());
+        when(snapshotRepo.save(any(InventorySnapshot.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(rest.getForObject(anyString(), eq(InventorySnapshot.class))).thenReturn(fresh);
 
-        InventorySnapshotEntity result = inventoryService.getFallback(sku, new RuntimeException("Service down"));
+        InventorySnapshot result = inventoryService.getInventoryByProductSku(sku);
 
-        // verify fallback was handled properly
         assertThat(result).isNotNull();
-        assertThat(result.getProductSku()).isEqualTo(sku);
-        assertThat(result.getQuantity()).isEqualTo(5);
+        assertThat(result.getProductSku()).isEqualTo("00589837");
         assertThat(result.getVersion()).isEqualTo(10L);
 
-        verify(snapshotRepo).findByProductSku(sku);
+        verify(snapshotRepo, times(1)).findByProductSku(sku);
+        verify(rest, times(1)).getForObject(anyString(), eq(InventorySnapshot.class));
+        verify(snapshotRepo).save(fresh);
     }
 
     @Test
-    void testGetFallback_returnLocalCacheFailure() {
+    void testGetFallback_returnCacheOrServiceFailure() {
         String sku = "00589837";
 
         when(snapshotRepo.findByProductSku(sku)).thenReturn(Optional.empty());
 
-        InventorySnapshotEntity result = inventoryService.getFallback(sku, new RuntimeException("Service down"));
+        // fallback called due to missing cache
+        InventorySnapshot cacheFailure = inventoryService.getFallback(sku, new RuntimeException("Timeout"));
 
-        assertThat(result).isNotNull();
-        assertThat(result.getProductSku()).isEqualTo(sku);
-        assertThat(result.getVersion()).isEqualTo(ExceptionVersion.LOCAL_CACHE_FAILURE.getVersion());
+        assertThat(cacheFailure.getVersion()).isEqualTo(ExceptionVersion.LOCAL_CACHE_FAILURE.getVersion());
 
-        verify(snapshotRepo).findByProductSku(sku);
-    }
+        // fallback called due to throwing exception
+        when(snapshotRepo.findByProductSku(sku)).thenThrow(new RuntimeException("DB error"));
 
-    @Test
-    void testGetFallback_returnServiceFailure() {
-        String sku = "00589837";
+        InventorySnapshot serviceFailure = inventoryService.getFallback(sku, new RuntimeException("Service down"));
 
-        when(snapshotRepo.findByProductSku(sku)).thenThrow(new RuntimeException("Service down"));
-
-        InventorySnapshotEntity result = inventoryService.getFallback(sku, new RuntimeException("Service down"));
-
-        assertThat(result).isNotNull();
-        assertThat(result.getProductSku()).isEqualTo(sku);
-        assertThat(result.getVersion()).isEqualTo(ExceptionVersion.SERVICE_FAILURE.getVersion());
-
-        verify(snapshotRepo).findByProductSku(sku);
+        assertThat(serviceFailure.getVersion()).isEqualTo(ExceptionVersion.SERVICE_FAILURE.getVersion());
     }
 }

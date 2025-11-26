@@ -3,10 +3,10 @@ package com.retail.inventory.order_service.infrastructure.messaging;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.retail.inventory.common.messaging.Envelope;
 import com.retail.inventory.common.messaging.model.EventType;
-import com.retail.inventory.order_service.api.dto.snapshot.ProductSnapshot;
-import com.retail.inventory.order_service.domain.model.snapshot.ProductSnapshotEntity;
-import com.retail.inventory.order_service.domain.repository.ProcessedEventRepository;
-import com.retail.inventory.order_service.domain.repository.ProductSnapshotRepository;
+import com.retail.inventory.order_service.api.dto.snapshot.ProductSnapshotDto;
+import com.retail.inventory.order_service.domain.model.snapshot.ProductSnapshot;
+import com.retail.inventory.order_service.domain.repository.order.ProcessedEventRepository;
+import com.retail.inventory.order_service.domain.repository.snapshot.ProductSnapshotRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -42,13 +42,13 @@ public class ProductEventConsumerTest {
     @Test
     void testConsume_duplicateEvent() {
         String eventId = UUID.randomUUID().toString();
-        Envelope<ProductSnapshot> envelope = new Envelope<>(
+        Envelope<ProductSnapshotDto> envelope = new Envelope<>(
                 eventId,
                 EventType.PRODUCT_UPDATED,
                 "00589837",
                 1L,
                 LocalDateTime.now(),
-                new ProductSnapshot(
+                new ProductSnapshotDto(
                         "00589837",
                         "test",
                         "desc",
@@ -56,7 +56,7 @@ public class ProductEventConsumerTest {
                         Map.of("category", "test")
                 )
         );
-        ConsumerRecord<String, Envelope<ProductSnapshot>> record = new ConsumerRecord<>(
+        ConsumerRecord<String, Envelope<ProductSnapshotDto>> record = new ConsumerRecord<>(
                 "product.snapshots",
                 0,
                 0L,
@@ -68,7 +68,7 @@ public class ProductEventConsumerTest {
         when(eventRepo.existsById(eventId)).thenReturn(true);
         // stub MeterRegistry used in consume()
         when(meterRegistry.counter(eq("products.events.duplicate"))).thenReturn(counter);
-        when(mapper.convertValue(envelope.getPayload(), ProductSnapshot.class)).thenReturn(envelope.getPayload());
+        when(mapper.convertValue(envelope.getPayload(), ProductSnapshotDto.class)).thenReturn(envelope.getPayload());
 
         eventConsumer.consume(record);
 
@@ -79,13 +79,13 @@ public class ProductEventConsumerTest {
     @Test
     void testConsume_staleEvent() {
         String eventId = UUID.randomUUID().toString();
-        Envelope<ProductSnapshot> envelope = new Envelope<>(
+        Envelope<ProductSnapshotDto> envelope = new Envelope<>(
                 eventId,
                 EventType.PRODUCT_UPDATED,
                 "00589837",
                 1L,
                 LocalDateTime.now(),
-                new ProductSnapshot(
+                new ProductSnapshotDto(
                         "00589837",
                         "test",
                         "desc",
@@ -93,7 +93,7 @@ public class ProductEventConsumerTest {
                         Map.of("category", "test")
                 )
         );
-        ConsumerRecord<String, Envelope<ProductSnapshot>> record = new ConsumerRecord<>(
+        ConsumerRecord<String, Envelope<ProductSnapshotDto>> record = new ConsumerRecord<>(
                 "product.snapshots",
                 0,
                 0L,
@@ -101,7 +101,7 @@ public class ProductEventConsumerTest {
                 envelope
         );
 
-        ProductSnapshotEntity existing = new ProductSnapshotEntity(
+        ProductSnapshot existing = new ProductSnapshot(
                 "00589837",
                 "test",
                 "desc",
@@ -112,7 +112,7 @@ public class ProductEventConsumerTest {
 
         // event doesn't exist but item exists in snapshot repo
         when(eventRepo.existsById(eventId)).thenReturn(false);
-        when(mapper.convertValue(envelope.getPayload(), ProductSnapshot.class)).thenReturn(envelope.getPayload());
+        when(mapper.convertValue(envelope.getPayload(), ProductSnapshotDto.class)).thenReturn(envelope.getPayload());
         when(snapshotRepo.findBySku("00589837")).thenReturn(Optional.of(existing));
         when(meterRegistry.counter(eq("products.events.ignored_stale"))).thenReturn(counter);
 
@@ -125,13 +125,13 @@ public class ProductEventConsumerTest {
     @Test
     void testConsume_updateProduct() {
         String eventId = UUID.randomUUID().toString();
-        Envelope<ProductSnapshot> envelope = new Envelope<>(
+        Envelope<ProductSnapshotDto> envelope = new Envelope<>(
                 eventId,
                 EventType.PRODUCT_UPDATED,
                 "00589837",
                 2L,
                 LocalDateTime.now(),
-                new ProductSnapshot(
+                new ProductSnapshotDto(
                         "00589837",
                         "test",
                         "desc",
@@ -139,7 +139,7 @@ public class ProductEventConsumerTest {
                         Map.of("category", "test")
                 )
         );
-        ConsumerRecord<String, Envelope<ProductSnapshot>> record = new ConsumerRecord<>(
+        ConsumerRecord<String, Envelope<ProductSnapshotDto>> record = new ConsumerRecord<>(
                 "product.snapshots",
                 0,
                 0L,
@@ -147,7 +147,7 @@ public class ProductEventConsumerTest {
                 envelope
         );
 
-        ProductSnapshotEntity existing = new ProductSnapshotEntity(
+        ProductSnapshot existing = new ProductSnapshot(
                 "00589837",
                 "test",
                 "desc",
@@ -158,7 +158,7 @@ public class ProductEventConsumerTest {
 
         // event doesn't exist and item exists in repo but is an older version, so it should be updated
         when(eventRepo.existsById(eventId)).thenReturn(false);
-        when(mapper.convertValue(envelope.getPayload(), ProductSnapshot.class)).thenReturn(envelope.getPayload());
+        when(mapper.convertValue(envelope.getPayload(), ProductSnapshotDto.class)).thenReturn(envelope.getPayload());
         when(snapshotRepo.findBySku("00589837")).thenReturn(Optional.of(existing));
         when(meterRegistry.counter(eq("products.events.consumed"))).thenReturn(counter);
 
@@ -172,13 +172,13 @@ public class ProductEventConsumerTest {
     @Test
     void testConsume_throws() {
         String eventId = UUID.randomUUID().toString();
-        Envelope<ProductSnapshot> envelope = new Envelope<>(
+        Envelope<ProductSnapshotDto> envelope = new Envelope<>(
                 eventId,
                 EventType.PRODUCT_UPDATED,
                 "00589837",
                 1L,
                 LocalDateTime.now(),
-                new ProductSnapshot(
+                new ProductSnapshotDto(
                         "00589837",
                         "test",
                         "desc",
@@ -186,7 +186,7 @@ public class ProductEventConsumerTest {
                         Map.of("category", "test")
                 )
         );
-        ConsumerRecord<String, Envelope<ProductSnapshot>> record = new ConsumerRecord<>(
+        ConsumerRecord<String, Envelope<ProductSnapshotDto>> record = new ConsumerRecord<>(
                 "product.snapshots",
                 0,
                 0L,
@@ -194,7 +194,7 @@ public class ProductEventConsumerTest {
                 envelope
         );
 
-        when(mapper.convertValue(envelope.getPayload(), ProductSnapshot.class)).thenThrow(new RuntimeException("Could not consume"));
+        when(mapper.convertValue(envelope.getPayload(), ProductSnapshotDto.class)).thenThrow(new RuntimeException("Could not consume"));
         when(meterRegistry.counter("products.events.failed")).thenReturn(counter);
 
         eventConsumer.consume(record);
@@ -206,13 +206,13 @@ public class ProductEventConsumerTest {
     @Test
     void testConsume_savesAndRecords() {
         String eventId = UUID.randomUUID().toString();
-        Envelope<ProductSnapshot> envelope = new Envelope<>(
+        Envelope<ProductSnapshotDto> envelope = new Envelope<>(
                 eventId,
                 EventType.PRODUCT_UPDATED,
                 "00589837",
                 1L,
                 LocalDateTime.now(),
-                new ProductSnapshot(
+                new ProductSnapshotDto(
                         "00589837",
                         "test",
                         "desc",
@@ -220,7 +220,7 @@ public class ProductEventConsumerTest {
                         Map.of("category", "test")
                 )
         );
-        ConsumerRecord<String, Envelope<ProductSnapshot>> record = new ConsumerRecord<>(
+        ConsumerRecord<String, Envelope<ProductSnapshotDto>> record = new ConsumerRecord<>(
                 "product.snapshots",
                 0,
                 0L,
@@ -232,7 +232,7 @@ public class ProductEventConsumerTest {
         when(eventRepo.existsById(eventId)).thenReturn(false);
         // stub MeterRegistry in consume()
         when(meterRegistry.counter(eq("products.events.consumed"))).thenReturn(counter);
-        when(mapper.convertValue(envelope.getPayload(), ProductSnapshot.class)).thenReturn(envelope.getPayload());
+        when(mapper.convertValue(envelope.getPayload(), ProductSnapshotDto.class)).thenReturn(envelope.getPayload());
 
         eventConsumer.consume(record);
 

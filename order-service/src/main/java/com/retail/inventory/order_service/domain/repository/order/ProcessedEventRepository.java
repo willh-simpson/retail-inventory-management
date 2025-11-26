@@ -1,4 +1,4 @@
-package com.retail.inventory.order_service.domain.repository;
+package com.retail.inventory.order_service.domain.repository.order;
 
 import com.retail.inventory.order_service.domain.model.event.ProcessedEvent;
 import org.springframework.data.jpa.repository.JpaRepository;

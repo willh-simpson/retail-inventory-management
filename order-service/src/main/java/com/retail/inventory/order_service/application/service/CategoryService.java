@@ -1,15 +1,17 @@
 package com.retail.inventory.order_service.application.service;
 
-import com.retail.inventory.order_service.domain.model.snapshot.CategorySnapshotEntity;
+import com.retail.inventory.order_service.domain.model.snapshot.CategorySnapshot;
 import com.retail.inventory.order_service.domain.model.snapshot.ExceptionVersion;
-import com.retail.inventory.order_service.domain.repository.CategorySnapshotRepository;
+import com.retail.inventory.order_service.domain.repository.snapshot.CategorySnapshotRepository;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 @Service
-public class CategoryService extends SnapshotService<CategorySnapshotEntity> {
+public class CategoryService extends SnapshotService<CategorySnapshot> {
     private final CategorySnapshotRepository snapshotRepo;
 
     public CategoryService(RestTemplateBuilder builder, CategorySnapshotRepository snapshotRepo) {
@@ -24,22 +26,40 @@ public class CategoryService extends SnapshotService<CategorySnapshotEntity> {
 
     @Retry(name = "categoryServiceRetry")
     @CircuitBreaker(name = "categoryServiceCircuitBreaker", fallbackMethod = "getFallback")
-    public CategorySnapshotEntity getCategoryByName(String name) {
-        return rest.getForObject(getBaseUrl() + name, CategorySnapshotEntity.class);
+    public CategorySnapshot getCategoryByName(String name) {
+        // query local repo first
+        Optional<CategorySnapshot> cached = snapshotRepo.findByName(name);
+
+        if (cached.isPresent()) {
+            return cached.get();
+        }
+
+        // fallback to REST query if snapshot is missing
+        CategorySnapshot category = rest.getForObject(getBaseUrl() + name, CategorySnapshot.class);
+
+        if (category != null) {
+            return snapshotRepo.save(category);
+        } else {
+            return new CategorySnapshot(
+                    name,
+                    "",
+                    ExceptionVersion.LOCAL_CACHE_FAILURE.getVersion()
+            );
+        }
     }
 
     @Override
-    public CategorySnapshotEntity getFallback(String name, Throwable t) {
+    public CategorySnapshot getFallback(String name, Throwable t) {
         try {
             return snapshotRepo.findByName(name)
-                    .orElse(new CategorySnapshotEntity(
-                            "",
+                    .orElse(new CategorySnapshot(
+                            name,
                             "",
                             ExceptionVersion.LOCAL_CACHE_FAILURE.getVersion()
                     ));
         } catch (Exception e) {
-            return new CategorySnapshotEntity(
-                    "",
+            return new CategorySnapshot(
+                    name,
                     "",
                     ExceptionVersion.SERVICE_FAILURE.getVersion()
             );

@@ -1,8 +1,10 @@
 package com.retail.inventory.inventory_service.application.service;
 
 import com.retail.inventory.inventory_service.api.dto.request.CategoryRequestDto;
+import com.retail.inventory.inventory_service.api.dto.snapshot.CategorySnapshot;
 import com.retail.inventory.inventory_service.domain.model.Category;
 import com.retail.inventory.inventory_service.domain.repository.CategoryRepository;
+import com.retail.inventory.inventory_service.infrastructure.messaging.CategoryEventProducer;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -14,8 +16,11 @@ import java.util.List;
 public class CategoryService {
     private final CategoryRepository repo;
 
-    public CategoryService(CategoryRepository repo) {
+    private final CategoryEventProducer eventProducer;
+
+    public CategoryService(CategoryRepository repo, CategoryEventProducer eventProducer) {
         this.repo = repo;
+        this.eventProducer = eventProducer;
     }
 
     private Category fromRequestDto(CategoryRequestDto req) {
@@ -34,8 +39,15 @@ public class CategoryService {
 
     public Category addCategory(CategoryRequestDto req) {
         Category category = fromRequestDto(req);
+        Category saved = repo.save(category);
 
-        return repo.save(category);
+        CategorySnapshot snapshot = new CategorySnapshot(
+                saved.getName(),
+                saved.getDescription()
+        );
+        eventProducer.publish(snapshot);
+
+        return saved;
     }
 
     public Category changeName(Long id, String name) {

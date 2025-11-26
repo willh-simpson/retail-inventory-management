@@ -1,0 +1,56 @@
+spring:
+  datasource:
+    url: jdbc:tc:postgresql:15.3-alpine:///testdb
+    username: test
+    password: test
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+
+  autoconfigure:
+    exclude:
+      - io.github.resilience4j.springboot3.micrometer.autoconfigure.Resilience4jMicrometerAutoConfiguration
+      # - org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
+      # - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
+
+  # data:
+  #   mongodb:
+  #     host: localhost
+  #     port: 27018
+  #     database: testdb
+
+  jpa:
+    defer-datasource-initialization: true
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      auto-offset-reset: earliest
+      group-id: test-group
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    groupId: test-group
+    topics:
+      categorySnapshots: category-snapshots-test
+      inventorySnapshots: inventory-snapshots-test
+      productSnapshots: product-snapshots-test
+
+  resilience4j:
+    metrics:
+      enabled: false
+
+  management:
+    metrics:
+      export:
+        simple:
+          enabled: false
+
+logging:
+  level:
+    org.testcontainers: INFO
+    org.springframework.test: INFO

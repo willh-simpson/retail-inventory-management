@@ -6,10 +6,11 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.util.Map;
 
 @Document("product_snapshot")
-public class ProductSnapshotEntity {
+public class ProductSnapshot {
     @Id
-    private String sku;
+    private String id;
 
+    private String sku;
     private String name;
     private String description;
     private double price;
@@ -17,13 +18,21 @@ public class ProductSnapshotEntity {
 
     private final Long version;
 
-    public ProductSnapshotEntity(String sku, String name, String description, double price, Map<String, Object> attributes, Long version) {
+    public ProductSnapshot(String sku, String name, String description, double price, Map<String, Object> attributes, Long version) {
         this.sku = sku;
         this.name = name;
         this.description = description;
         this.price = price;
         this.attributes = attributes;
         this.version = version;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     public String getSku() {

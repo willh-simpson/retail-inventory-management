@@ -1,23 +1,26 @@
 package com.retail.inventory.order_service.application;
 
+import com.retail.inventory.common.messaging.InventoryReservationStatus;
+import com.retail.inventory.order_service.OrderServiceApplication;
 import com.retail.inventory.order_service.api.dto.request.OrderRequest;
 import com.retail.inventory.order_service.api.dto.request.OrderItemRequest;
 import com.retail.inventory.order_service.api.dto.response.ReserveResponse;
 import com.retail.inventory.order_service.application.service.OrderService;
 import com.retail.inventory.order_service.application.service.ProductService;
+import com.retail.inventory.order_service.config.NoRetryConfig;
 import com.retail.inventory.order_service.domain.exception.ValidationException;
 import com.retail.inventory.order_service.domain.model.order.Order;
 import com.retail.inventory.order_service.domain.model.order.OrderStatus;
-import com.retail.inventory.order_service.domain.model.snapshot.ProductSnapshotEntity;
-import com.retail.inventory.order_service.domain.repository.OrderRepository;
-import com.retail.inventory.order_service.domain.repository.RetryRepository;
+import com.retail.inventory.order_service.domain.model.snapshot.ProductSnapshot;
+import com.retail.inventory.order_service.domain.repository.order.OrderRepository;
+import com.retail.inventory.order_service.domain.repository.order.RetryRepository;
 import com.retail.inventory.order_service.infrastructure.client.InventoryClient;
 import com.retail.inventory.order_service.infrastructure.messaging.OrderEventProducer;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 
 import static org.mockito.Mockito.*;
 import static org.assertj.core.api.Assertions.*;
@@ -25,28 +28,30 @@ import static org.assertj.core.api.Assertions.*;
 import java.util.Arrays;
 import java.util.Map;
 
-
-@ExtendWith(MockitoExtension.class)
+/**
+ * normally this unit test should not be a SpringBootTest,
+ * but unsuccessful order reservations results in
+ * orderService.createOrder() returning null due to reserveFallback()
+ * not being called by Mockito.
+ */
+@SpringBootTest(classes = {OrderServiceApplication.class})
+@Import(NoRetryConfig.class)
 public class OrderServiceTest {
-    @Mock
+    @Autowired
+    private OrderService orderService;
+
+    @MockBean
     private OrderRepository orderRepo;
-    @Mock
+    @MockBean
     private RetryRepository retryRepo;
-    @Mock
+    @MockBean
     private OrderEventProducer eventProducer;
-    @Mock
+    @MockBean
     private ProductService proService;
-    @Mock
+    @MockBean
     private InventoryClient client;
 
-    @InjectMocks
-    private OrderService orderService;
     private OrderService orderServiceSpy;
-
-    @BeforeEach
-    void setup() {
-        orderServiceSpy = Mockito.spy(orderService);
-    }
 
     @Test
     void testCreateOrder_success_persistAndPublish() {
@@ -59,11 +64,11 @@ public class OrderServiceTest {
 
         // mock reserving an item
         when(client.reserve(any())).thenReturn(
-                new ReserveResponse(true, "Item reserved")
+                new ReserveResponse(true, InventoryReservationStatus.SUCCESS, "Item reserved")
         );
         // mock finding item
-        when(proService.getProductBySku(req.items().get(0).sku())).thenReturn(new ProductSnapshotEntity("00589837", "test", "desc", 9.99, Map.of("category", "test"), 1L));
-        when(proService.getProductBySku(req.items().get(1).sku())).thenReturn(new ProductSnapshotEntity("00010001", "test 2", "desc", 19.99, Map.of("category", "test"), 1L));
+        when(proService.getProductBySku(req.items().get(0).sku())).thenReturn(new ProductSnapshot("00589837", "test", "desc", 9.99, Map.of("category", "test"), 1L));
+        when(proService.getProductBySku(req.items().get(1).sku())).thenReturn(new ProductSnapshot("00010001", "test 2", "desc", 19.99, Map.of("category", "test"), 1L));
         // make repo save() return the order passed in
         when(orderRepo.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -88,16 +93,17 @@ public class OrderServiceTest {
                 )
         );
 
-        when(proService.getProductBySku(req.items().get(0).sku())).thenReturn(new ProductSnapshotEntity("00589837", "test", "desc", 9.99, Map.of("category", "test"), 1L));
-        when(proService.getProductBySku(req.items().get(1).sku())).thenReturn(new ProductSnapshotEntity("00010001", "test 2", "desc", 19.99, Map.of("category", "test"), 1L));
+        when(proService.getProductBySku(req.items().get(0).sku())).thenReturn(new ProductSnapshot("00589837", "test", "desc", 9.99, Map.of("category", "test"), 1L));
+        when(proService.getProductBySku(req.items().get(1).sku())).thenReturn(new ProductSnapshot("00010001", "test 2", "desc", 19.99, Map.of("category", "test"), 1L));
 
         // mock not being able to reserve item
-        doReturn(new ReserveResponse(false, "Could not reserve order"))
-                .when(orderServiceSpy).reserve(any());
+        when(client.reserve(any()))
+                .thenReturn(ReserveResponse.systemError("Could not reserve order"));
+        when(orderRepo.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        Order result = orderServiceSpy.createOrder(req);
+        Order result = orderService.createOrder(req);
 
-        assertThat(result.getStatus()).isEqualTo(OrderStatus.PENDING);
+        assertThat(result.getStatus()).isEqualTo(OrderStatus.PENDING_RETRY);
         verify(eventProducer, never()).publish(any());
     }
 
@@ -110,17 +116,16 @@ public class OrderServiceTest {
                 )
         );
 
-        when(proService.getProductBySku(req.items().get(0).sku())).thenReturn(new ProductSnapshotEntity("00589837", "test", "desc", 9.99, Map.of("category", "test"), 1L));
-        when(proService.getProductBySku(req.items().get(1).sku())).thenReturn(new ProductSnapshotEntity("00010001", "test 2", "desc", 19.99, Map.of("category", "test"), 1L));
+        when(proService.getProductBySku(req.items().get(0).sku())).thenReturn(new ProductSnapshot("00589837", "test", "desc", 9.99, Map.of("category", "test"), 1L));
+        when(proService.getProductBySku(req.items().get(1).sku())).thenReturn(new ProductSnapshot("00010001", "test 2", "desc", 19.99, Map.of("category", "test"), 1L));
+        when(client.reserve(any()))
+                .thenThrow(new RuntimeException("Could not reserve order"));
+        when(orderRepo.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        // stub fallback call after exception is thrown
-        doThrow(new RuntimeException("Could not reserve order"))
-                .when(orderServiceSpy).reserve(any());
-
-        Order result = orderServiceSpy.createOrder(req);
+        Order result = orderService.createOrder(req);
 
         // verify exception was handled
-        assertThat(result.getStatus()).isEqualTo(OrderStatus.PENDING);
+        assertThat(result.getStatus()).isEqualTo(OrderStatus.PENDING_RETRY);
         verify(eventProducer, never()).publish(any());
     }
 
@@ -164,7 +169,7 @@ public class OrderServiceTest {
 
         assertThatThrownBy(() -> orderService.createOrder(req))
                 .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("Items must have a SKU");
+                .hasMessageContaining(ValidationException.Message.MISSING_SKU.toString());
 
         verifyNoInteractions(client, eventProducer, retryRepo);
     }

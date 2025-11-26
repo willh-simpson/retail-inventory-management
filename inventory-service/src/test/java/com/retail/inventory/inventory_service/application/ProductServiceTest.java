@@ -6,6 +6,10 @@ import com.retail.inventory.inventory_service.domain.model.Category;
 import com.retail.inventory.inventory_service.domain.model.Product;
 import com.retail.inventory.inventory_service.domain.repository.CategoryRepository;
 import com.retail.inventory.inventory_service.domain.repository.ProductRepository;
+import com.retail.inventory.inventory_service.infrastructure.messaging.ProductEventProducer;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -27,9 +31,17 @@ import static org.mockito.Mockito.*;
 class ProductServiceTest {
     @Mock
     private ProductRepository productRepo;
-
     @Mock
     private CategoryRepository categoryRepo;
+    @Mock
+    private ProductEventProducer eventProducer;
+
+    @Mock
+    private MeterRegistry meterRegistry;
+    @Mock
+    private Counter mockCounter;
+    @Mock
+    private Timer mockTimer;
 
     @InjectMocks
     private ProductService service;
@@ -51,6 +63,8 @@ class ProductServiceTest {
         // mock category repo find()
         when(categoryRepo.findById(cat.getId())).thenReturn(Optional.of(cat));
 
+        when(meterRegistry.counter(anyString(), any(String[].class))).thenReturn(mockCounter);
+
         // verify the correct product was added
         Product savedProduct = service.addProduct(new ProductRequestDto(1L, "00589837", "example", "example desc", 9.99, 1L));
         assertThat(savedProduct.getId()).isEqualTo(1L);
@@ -61,6 +75,7 @@ class ProductServiceTest {
         // verify repo functions were called only once
         verify(productRepo, times(1)).save(any(Product.class));
         verify(categoryRepo, times(1)).findById(cat.getId());
+        verify(eventProducer, times(1)).publish(any());
     }
 
     @Test
@@ -71,6 +86,9 @@ class ProductServiceTest {
 
         // mock repo find()
         when(productRepo.findBySku("00010001")).thenReturn(Optional.of(product));
+
+        when(meterRegistry.timer(anyString(), any(String[].class))).thenReturn(mockTimer);
+        when(meterRegistry.counter(anyString(), any(String[].class))).thenReturn(mockCounter);
 
         // verify product was found
         Product foundProduct = service.getProduct("00010001");
@@ -84,6 +102,9 @@ class ProductServiceTest {
     void testFindBySku_Fail() {
         // mock a failed get request
         when(productRepo.findBySku("00020002")).thenReturn(Optional.empty());
+
+        when(meterRegistry.timer(anyString(), any(String[].class))).thenReturn(mockTimer);
+        when(meterRegistry.counter(anyString(), any(String[].class))).thenReturn(mockCounter);
 
         // verify exception was thrown when calling controller
         assertThatThrownBy(() -> service.getProduct("00020002"))
@@ -126,6 +147,8 @@ class ProductServiceTest {
 
         // mock repo save()
         when(productRepo.save(product)).thenAnswer(i -> i.getArgument(0));
+
+        when(meterRegistry.counter(anyString(), any(String[].class))).thenReturn(mockCounter);
 
         // verify updated price is now 10.99
         Product newPrice = service.updatePrice(product.getId(), 10.99);

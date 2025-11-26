@@ -18,7 +18,7 @@ public class CategoryEventProducer {
     private final KafkaTemplate<String, Object> kafka;
     private final EventVersionRepository evRepo;
 
-    @Value("${kafka.topics.categorySnapshots}")
+    @Value("${spring.kafka.topics.categorySnapshots}")
     private String topic;
 
     public CategoryEventProducer(KafkaTemplate<String, Object> kafka, EventVersionRepository evRepo) {

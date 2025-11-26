@@ -6,11 +6,15 @@ import com.retail.inventory.inventory_service.domain.model.Product;
 import com.retail.inventory.inventory_service.domain.repository.CategoryRepository;
 import com.retail.inventory.inventory_service.domain.repository.InventoryRepository;
 import com.retail.inventory.inventory_service.domain.repository.ProductRepository;
+import com.retail.inventory.inventory_service.infrastructure.messaging.CategoryEventProducer;
+import com.retail.inventory.inventory_service.infrastructure.messaging.InventoryEventProducer;
+import com.retail.inventory.inventory_service.infrastructure.messaging.ProductEventProducer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -31,7 +35,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public class InventoryIntegrationTest {
     @Autowired
     private JdbcTemplate jdbc;
-
     @Autowired
     private MockMvc mvc;
 
@@ -41,6 +44,13 @@ public class InventoryIntegrationTest {
     private ProductRepository proRepo;
     @Autowired
     private CategoryRepository catRepo;
+
+    @MockBean
+    private CategoryEventProducer catEventProducer;
+    @MockBean
+    private InventoryEventProducer invEventProducer;
+    @MockBean
+    private ProductEventProducer proEventProducer;
 
     @BeforeEach
     void resetSequences() {

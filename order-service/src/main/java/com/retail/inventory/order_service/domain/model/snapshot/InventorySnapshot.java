@@ -6,22 +6,31 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDateTime;
 
 @Document("inventory_snapshot")
-public class InventorySnapshotEntity {
+public class InventorySnapshot {
     @Id
-    private String productSku;
+    private String id;
 
+    private String productSku;
     private int quantity;
     private String location;
     private LocalDateTime lastUpdated;
 
     private final Long version;
 
-    public InventorySnapshotEntity(String productSku, int quantity, String location, LocalDateTime lastUpdated, Long version) {
+    public InventorySnapshot(String productSku, int quantity, String location, LocalDateTime lastUpdated, Long version) {
         this.productSku = productSku;
         this.quantity = quantity;
         this.location = location;
         this.lastUpdated = lastUpdated;
         this.version = version;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     public String getProductSku() {

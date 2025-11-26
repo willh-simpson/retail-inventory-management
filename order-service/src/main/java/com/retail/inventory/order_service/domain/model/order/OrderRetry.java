@@ -11,7 +11,10 @@ public class OrderRetry {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @ManyToOne
+    @JoinColumn(name = "order_id")
     private Order order;
+
     private Long retryCount;
     private LocalDateTime createdAt;
     private LocalDateTime lastAttemptedAt;
@@ -25,6 +28,17 @@ public class OrderRetry {
         this.createdAt = createdAt;
         this.lastAttemptedAt = createdAt; // prevent field from being null
         this.retryCount = 0L;
+    }
+
+    @Override
+    public String toString() {
+        return "OrderRetry: { " +
+                "id: " + id +
+                ", orderId: " + order.getId() +
+                ", retryCount: " + retryCount +
+                ", createdAt: " + createdAt +
+                ", lastAttemptedAt: " + lastAttemptedAt +
+                " }";
     }
 
     public Long getId() {

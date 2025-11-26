@@ -4,18 +4,27 @@ import jakarta.persistence.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document("category_snapshot")
-public class CategorySnapshotEntity {
+public class CategorySnapshot {
     @Id
-    private String name;
+    private String id;
 
+    private String name;
     private String description;
 
     private final Long version;
 
-    public CategorySnapshotEntity(String name, String description, Long version) {
+    public CategorySnapshot(String name, String description, Long version) {
         this.name = name;
         this.description = description;
         this.version = version;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     public String getName() {

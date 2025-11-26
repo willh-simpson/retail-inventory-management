@@ -3,11 +3,12 @@ package com.retail.inventory.order_service.application.service;
 import com.retail.inventory.order_service.api.dto.event.OrderCreatedEvent;
 import com.retail.inventory.order_service.api.dto.request.ReserveRequest;
 import com.retail.inventory.order_service.api.dto.response.ReserveResponse;
+import com.retail.inventory.order_service.domain.exception.RetryException;
 import com.retail.inventory.order_service.domain.model.order.Order;
 import com.retail.inventory.order_service.domain.model.order.OrderRetry;
 import com.retail.inventory.order_service.domain.model.order.OrderStatus;
-import com.retail.inventory.order_service.domain.repository.OrderRepository;
-import com.retail.inventory.order_service.domain.repository.RetryRepository;
+import com.retail.inventory.order_service.domain.repository.order.OrderRepository;
+import com.retail.inventory.order_service.domain.repository.order.RetryRepository;
 import com.retail.inventory.order_service.infrastructure.client.InventoryClient;
 import com.retail.inventory.order_service.infrastructure.messaging.OrderEventProducer;
 import jakarta.transaction.Transactional;
@@ -36,9 +37,27 @@ public class RetryService {
         List<OrderRetry> retries = retryRepo.findAll();
 
         for (OrderRetry retry : retries) {
+            Long orderId = retry.getOrder().getId();
+
             try {
-                orderRepo.findById(retry.getOrder().getId()).ifPresent(order -> handleRetry(retry, order));
-            } catch (Exception e) {
+                orderRepo
+                        .findById(orderId)
+                        .ifPresentOrElse(
+                                order -> handleRetry(retry, order),
+                                () -> {
+                                    throw new RetryException(RetryException.Message.ORIGIN_ORDER_NOT_FOUND);
+                                }
+                        );
+            } catch (RetryException ex) {
+                if (ex.getMessage().contains(RetryException.Message.ORIGIN_ORDER_NOT_FOUND.toString())) {
+                    System.err.println(ex.getMessage() + " -> " + orderId);
+                    System.err.println("Deleting corrupted retry ID -> " + retry.getId());
+
+                    retryRepo.delete(retry);
+                }
+            } catch (Exception ex) {
+                System.err.println("Unexpected error when fetching order");
+
                 retry.incrementCount();
                 retryRepo.save(retry);
             }
@@ -46,6 +65,13 @@ public class RetryService {
     }
 
     private void handleRetry(OrderRetry retry, Order order) {
+        // don't process retries on an already confirmed order
+        if (order.getStatus() == OrderStatus.CONFIRMED) {
+            retryRepo.delete(retry);
+
+            return;
+        }
+
         ReserveResponse res = client.reserve(new ReserveRequest(order.getItems()));
 
         if (res.success()) {

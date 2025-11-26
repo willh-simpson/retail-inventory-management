@@ -1,5 +1,6 @@
 package com.retail.inventory.order_service.application;
 
+import com.retail.inventory.common.messaging.InventoryReservationStatus;
 import com.retail.inventory.order_service.api.dto.event.OrderCreatedEvent;
 import com.retail.inventory.order_service.api.dto.response.ReserveResponse;
 import com.retail.inventory.order_service.application.service.RetryService;
@@ -7,8 +8,8 @@ import com.retail.inventory.order_service.domain.model.order.Order;
 import com.retail.inventory.order_service.domain.model.order.OrderItem;
 import com.retail.inventory.order_service.domain.model.order.OrderRetry;
 import com.retail.inventory.order_service.domain.model.order.OrderStatus;
-import com.retail.inventory.order_service.domain.repository.OrderRepository;
-import com.retail.inventory.order_service.domain.repository.RetryRepository;
+import com.retail.inventory.order_service.domain.repository.order.OrderRepository;
+import com.retail.inventory.order_service.domain.repository.order.RetryRepository;
 import com.retail.inventory.order_service.infrastructure.client.InventoryClient;
 import com.retail.inventory.order_service.infrastructure.messaging.OrderEventProducer;
 import org.junit.jupiter.api.Test;
@@ -43,7 +44,7 @@ public class RetryServiceTest {
     @Test
     void processRetry_success() {
         Order order = new Order(
-                OrderStatus.PENDING,
+                OrderStatus.PENDING_RETRY,
                 Arrays.asList(
                         new OrderItem("00589837", 5, 9.99),
                         new OrderItem("00010001", 4, 19.99)
@@ -53,7 +54,7 @@ public class RetryServiceTest {
 
         when(retryRepo.findAll()).thenReturn(List.of(retry));
         when(orderRepo.findById(order.getId())).thenReturn(Optional.of(order));
-        when(client.reserve(any())).thenReturn(new ReserveResponse(true, "Order reserved"));
+        when(client.reserve(any())).thenReturn(new ReserveResponse(true, InventoryReservationStatus.SUCCESS, "Order reserved"));
 
         retryService.processRetries();
 
@@ -65,7 +66,7 @@ public class RetryServiceTest {
     @Test
     void processRetry_failure() {
         Order order = new Order(
-                OrderStatus.PENDING,
+                OrderStatus.PENDING_RETRY,
                 Arrays.asList(
                         new OrderItem("00589837", 5, 9.99),
                         new OrderItem("00010001", 4, 19.99)
@@ -75,7 +76,7 @@ public class RetryServiceTest {
 
         when(retryRepo.findAll()).thenReturn(List.of(retry));
         when(orderRepo.findById(order.getId())).thenReturn(Optional.of(order));
-        when(client.reserve(any())).thenReturn(new ReserveResponse(false, "Could not reserve order"));
+        when(client.reserve(any())).thenReturn(new ReserveResponse(false, InventoryReservationStatus.ERROR, "Could not reserve order"));
 
         retryService.processRetries();
 

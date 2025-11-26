@@ -54,15 +54,11 @@ public class InventoryService {
                 .orElseThrow(() -> new RuntimeException("Inventory item not found"));
     }
 
-    /**
-     * return inventory information for a specific product via its SKU
-     *
-     * @param productSku product to request inventory information
-     * @return matching inventory or throw error if not found
-     */
     public InventoryItem getInventoryItemBySku(String productSku) {
-        return invRepo
-                .findByProductSku(productSku)
+        Product product = productRepo.findBySku(productSku)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        return invRepo.findByProductId(product.getId())
                 .orElseThrow(() -> new RuntimeException("Inventory item not found"));
     }
 

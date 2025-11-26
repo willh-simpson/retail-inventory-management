@@ -1,5 +1,6 @@
 package com.retail.inventory.inventory_service.api.controller;
 
+import com.retail.inventory.common.messaging.InventoryReservationStatus;
 import com.retail.inventory.inventory_service.api.dto.request.InventoryReservationRequest;
 import com.retail.inventory.inventory_service.api.dto.response.InventoryItemDto;
 import com.retail.inventory.inventory_service.api.dto.request.InventoryRequestDto;
@@ -44,7 +45,7 @@ public class InventoryController {
         return ResponseEntity.ok(InventoryItemDto.fromEntity(item));
     }
 
-    @GetMapping("/{product_sku}")
+    @GetMapping("/sku/{product_sku}")
     public ResponseEntity<InventoryItemDto> getInventoryItemBySku(@PathVariable("product_sku") String productSku) {
         InventoryItem item = service.getInventoryItemBySku(productSku);
 
@@ -70,15 +71,31 @@ public class InventoryController {
     public ResponseEntity<InventoryReservationResponse> reserveInventory(@RequestBody InventoryReservationRequest req) {
         InventoryItem item = service.getInventoryItem(req.productId());
 
+        if (item.getQuantity() == 0) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body(new InventoryReservationResponse(
+                            false,
+                            InventoryReservationStatus.OUT_OF_STOCK,
+                            "Out of stock"
+                    ));
+        }
+
         if (item.getQuantity() < req.quantity()) {
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
-                    .body(new InventoryReservationResponse(false, "Insufficient stock"));
+                    .body(new InventoryReservationResponse(
+                            false,
+                            InventoryReservationStatus.INSUFFICIENT_STOCK,
+                            "Insufficient stock. Available units: " + item.getQuantity()));
         }
 
         // subtract stock using addStock()
         addStock(item.getProduct().getId(), new StockRequest(-req.quantity()));
 
-        return ResponseEntity.ok(new InventoryReservationResponse(true, "Reserved"));
+        return ResponseEntity.ok(new InventoryReservationResponse(
+                true,
+                InventoryReservationStatus.SUCCESS,
+                "Reserved"));
     }
 }

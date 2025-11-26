@@ -1,8 +1,10 @@
 package com.retail.inventory.order_service.domain.model.order;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 
 @Entity
+@Table(name = "order_items")
 public class OrderItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -14,7 +16,12 @@ public class OrderItem {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
+    @JsonBackReference
     private Order order;
+
+    protected OrderItem() {
+
+    }
 
     public OrderItem(String sku, int quantity, double price) {
         this.sku = sku;

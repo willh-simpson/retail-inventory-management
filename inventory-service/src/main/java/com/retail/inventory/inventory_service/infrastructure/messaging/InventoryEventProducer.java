@@ -18,7 +18,7 @@ public class InventoryEventProducer {
     private final KafkaTemplate<String, Object> kafka;
     private final EventVersionRepository evRepo;
 
-    @Value("${kafka.topics.inventorySnapshots}")
+    @Value("${spring.kafka.topics.inventorySnapshots}")
     private String topic;
 
     public InventoryEventProducer(KafkaTemplate<String, Object> kafka, EventVersionRepository evRepo) {

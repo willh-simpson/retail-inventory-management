@@ -4,6 +4,7 @@ import com.retail.inventory.inventory_service.api.dto.request.CategoryRequestDto
 import com.retail.inventory.inventory_service.application.service.CategoryService;
 import com.retail.inventory.inventory_service.domain.model.Category;
 import com.retail.inventory.inventory_service.domain.repository.CategoryRepository;
+import com.retail.inventory.inventory_service.infrastructure.messaging.CategoryEventProducer;
 import org.assertj.core.api.ListAssert;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,6 +25,8 @@ import static org.mockito.Mockito.*;
 public class CategoryServiceTest {
     @Mock
     private CategoryRepository repo;
+    @Mock
+    private CategoryEventProducer eventProducer;
 
     @InjectMocks
     private CategoryService service;
@@ -46,6 +49,7 @@ public class CategoryServiceTest {
 
         // verify repo was called only once
         verify(repo, times(1)).save(any(Category.class));
+        verify(eventProducer, times(1)).publish(any());
     }
 
     @Test

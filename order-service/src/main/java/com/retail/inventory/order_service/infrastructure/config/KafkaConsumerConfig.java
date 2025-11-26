@@ -1,7 +1,7 @@
-package com.retail.inventory.order_service.infrastructure.messaging;
+package com.retail.inventory.order_service.infrastructure.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.retail.inventory.order_service.domain.model.snapshot.ProductSnapshotEntity;
+import com.retail.inventory.order_service.domain.model.snapshot.ProductSnapshot;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.context.annotation.Bean;
@@ -18,8 +18,8 @@ import java.util.Map;
 @Configuration
 public class KafkaConsumerConfig {
     @Bean
-    public ConsumerFactory<String, ProductSnapshotEntity> consumerFactory(ObjectMapper mapper) {
-        JsonDeserializer<ProductSnapshotEntity> deserializer = new JsonDeserializer<>(ProductSnapshotEntity.class, mapper, false);
+    public ConsumerFactory<String, ProductSnapshot> consumerFactory(ObjectMapper mapper) {
+        JsonDeserializer<ProductSnapshot> deserializer = new JsonDeserializer<>(ProductSnapshot.class, mapper, false);
         deserializer.addTrustedPackages("*"); // allows deserialization for package
 
         return new DefaultKafkaConsumerFactory<>(
@@ -34,8 +34,8 @@ public class KafkaConsumerConfig {
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, ProductSnapshotEntity> kafkaListenerContainerFactory(ConsumerFactory<String, ProductSnapshotEntity> cf) {
-        ConcurrentKafkaListenerContainerFactory<String, ProductSnapshotEntity> factory = new ConcurrentKafkaListenerContainerFactory<>();
+    public ConcurrentKafkaListenerContainerFactory<String, ProductSnapshot> kafkaListenerContainerFactory(ConsumerFactory<String, ProductSnapshot> cf) {
+        ConcurrentKafkaListenerContainerFactory<String, ProductSnapshot> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(cf);
 
         return factory;

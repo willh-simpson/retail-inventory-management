@@ -7,6 +7,7 @@ import com.retail.inventory.inventory_service.domain.model.InventoryItem;
 import com.retail.inventory.inventory_service.domain.model.Product;
 import com.retail.inventory.inventory_service.domain.repository.InventoryRepository;
 import com.retail.inventory.inventory_service.domain.repository.ProductRepository;
+import com.retail.inventory.inventory_service.infrastructure.messaging.InventoryEventProducer;
 import org.assertj.core.api.ListAssert;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,9 +29,10 @@ import static org.mockito.Mockito.*;
 class InventoryServiceTest {
     @Mock
     private InventoryRepository invRepo;
-
     @Mock
     private ProductRepository productRepo;
+    @Mock
+    private InventoryEventProducer eventProducer;
 
     @InjectMocks
     private InventoryService service;
@@ -56,6 +58,7 @@ class InventoryServiceTest {
 
         // verify correct inventory item was added
         InventoryItem savedInv = service.addInventoryItem(new InventoryRequestDto(1L, product.getId(), 5, "aisle 1", currentTime));
+
         assertThat(savedInv.getId()).isEqualTo(1L);
         assertThat(savedInv.getProduct()).isEqualTo(product);
         assertThat(savedInv.getQuantity()).isEqualTo(5);
@@ -65,6 +68,7 @@ class InventoryServiceTest {
         // verify repo was called only once
         verify(invRepo, times(1)).save(any(InventoryItem.class));
         verify(productRepo, times(1)).findById(product.getId());
+        verify(eventProducer, times(1)).publish(any());
     }
 
     @Test
@@ -146,5 +150,6 @@ class InventoryServiceTest {
         // verify repo functions were called only once
         verify(invRepo, times(1)).findByProductId(product.getId());
         verify(invRepo, times(1)).save(any(InventoryItem.class));
+        verify(eventProducer, times(1)).publish(any());
     }
 }

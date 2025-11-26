@@ -1,8 +1,11 @@
 package com.retail.inventory.order_service.domain.model.order;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -14,10 +17,13 @@ public class Order {
 
     private String customerId;
     private double total;
-    private OrderStatus status; // implemented from OrderStatus
+    private OrderStatus status;
+    @CreationTimestamp
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
     private List<OrderItem> items;
 
     public Order() {
@@ -27,6 +33,18 @@ public class Order {
     public Order(OrderStatus status, List<OrderItem> items) {
         this.status = status;
         this.items = items;
+    }
+
+    @Override
+    public String toString() {
+        return "Order: { " +
+                "id: " + id +
+                ", customerId: " + customerId +
+                ", total: " + total +
+                ", status: " + status +
+                ", createdAt: " + createdAt +
+                ", items.size(): " + items.size() +
+                " }";
     }
 
     public Long getId() {
@@ -74,6 +92,6 @@ public class Order {
     }
 
     public void setItems(List<OrderItem> items) {
-        this.items = items;
+        this.items = new ArrayList<>(items); // ensure Order.items is a mutable list
     }
 }

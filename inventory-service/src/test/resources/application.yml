@@ -14,6 +14,20 @@ spring:
     show-sql: true
     generate-ddl: true
 
+    kafka:
+      bootstrap-servers: localhost:9092
+      consumer:
+        auto-offset-reset: earliest
+        group-id: test-group
+      producer:
+        key-serializer: org.apache.kafka.common.serialization.StringSerializer
+        value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      group-id: test-group
+      topics:
+        categorySnapshots: category-snapshots-test
+        inventorySnapshots: inventory-snapshots-test
+        productSnapshots: product-snapshots-test
+
 logging:
   level:
     org.testcontainers: INFO

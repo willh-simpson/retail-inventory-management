@@ -10,8 +10,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
@@ -30,7 +30,7 @@ public class InventoryControllerTest {
     @Autowired
     private MockMvc mvc;
 
-    @MockitoBean
+    @MockBean
     private InventoryService service;
 
     @Test
@@ -70,9 +70,9 @@ public class InventoryControllerTest {
         InventoryItem item = new InventoryItem(1L, product, 5, "aisle 1", currentTime);
 
         // mock service behavior
-        when(service.getInventoryItem(1L)).thenReturn(item);
+        when(service.getInventoryItem(product.getId())).thenReturn(item);
 
-        mvc.perform(get("/api/inventory/1"))
+        mvc.perform(get("/api/inventory/" + product.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1L))
                 .andExpect(jsonPath("$.product_id").value(1L))
